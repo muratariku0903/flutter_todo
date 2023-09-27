@@ -45,3 +45,5 @@ app.*.map.json
 windows
 macos
 linux
+
+.fvm/flutter_sdk
