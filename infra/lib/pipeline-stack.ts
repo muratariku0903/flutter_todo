@@ -64,7 +64,8 @@ export class PipelineStack extends cdk.Stack {
               actionName: 'Github',
               owner: 'muratariku0903',
               repo: 'flutter_todo',
-              oauthToken: cdk.SecretValue.secretsManager('github-token'),
+              // refer to Github token stored in AWS secret manager, this token is used to AWS accessing to Github
+              oauthToken: cdk.SecretValue.secretsManager('github-pipeline-token', { jsonField: 'github-token' }),
               // source code is stored in to sourceOutput as artifact and send to next stage of 'Build'
               output: sourceOutput,
             }),
