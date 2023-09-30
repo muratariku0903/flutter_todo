@@ -45,7 +45,7 @@ export class PipelineStack extends cdk.Stack {
         },
         artifacts: {
           // store of created artifacts
-          'base-directory:': 'build/web',
+          'base-directory': 'build/web',
           files: ['**/*'],
         },
       }),
