@@ -39,8 +39,18 @@ export class PipelineStack extends cdk.Stack {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
+          pre_build: {
+            commands: [
+              'echo Pre Build started on `date`',
+              // always install latest stable version flutter
+              'git clone https://github.com/flutter/flutter.git -b stable',
+              'export PATH="$PATH:`pwd`/flutter/bin"',
+              'flutter precache',
+              'flutter doctor',
+            ],
+          },
           build: {
-            commands: ['flutter build web'],
+            commands: ['echo Build started on `date`', 'flutter build web'],
           },
         },
         artifacts: {
