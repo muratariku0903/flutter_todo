@@ -50,7 +50,13 @@ export class PipelineStack extends cdk.Stack {
             ],
           },
           build: {
-            commands: ['echo Build started on `date`', 'flutter build web'],
+            commands: [
+              'echo Build started on `date`',
+              'flutter clean',
+              'flutter pub get',
+              'flutter pub run build_runner build',
+              'flutter build web',
+            ],
           },
         },
         artifacts: {
