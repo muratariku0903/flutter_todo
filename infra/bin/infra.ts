@@ -5,4 +5,4 @@ import { PipelineStack } from '../lib/pipeline-stack'
 
 const app = new cdk.App()
 
-new PipelineStack(app, 'PipelineStack', { branchName: 'master' })
+new PipelineStack(app, 'PipelineStack', { branchName: 'develop' })
