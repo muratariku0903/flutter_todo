@@ -8,8 +8,6 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     let branchName = body.ref.split('/').pop()
     console.log('Branch Name:', branchName)
 
-    console.log('hello!')
-
     return {
       statusCode: 200,
       body: JSON.stringify('Webhook received!'),
