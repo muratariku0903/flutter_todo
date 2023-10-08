@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import 'source-map-support/register'
 import * as cdk from 'aws-cdk-lib'
-import { PipelineStack } from '../lib/pipeline-stack'
+import { CommonServiceStack } from '../lib/common-service-stack'
+import { GithubTriggerStack } from '../lib/github-trigger-stack'
+// import { PipelineStack } from '../lib/pipeline-stack'
 
 const app = new cdk.App()
 
-new PipelineStack(app, 'PipelineStack', { branchName: 'develop' })
+new CommonServiceStack(app, 'CommonServiceStack')
+new GithubTriggerStack(app, 'GithubTriggerStack')
