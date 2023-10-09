@@ -87,8 +87,36 @@ const createPipeline = async (branchName: string): Promise<void> => {
           location: artifactBucketName,
           type: 'S3',
         },
-        stages: [],
-        // その他の設定やステージの情報などを追加
+        stages: [
+          {
+            name: 'Source',
+            actions: [
+              {
+                name: 'SourceAction',
+                actionTypeId: {
+                  category: 'Source',
+                  owner: 'AWS',
+                  version: '1',
+                  provider: 'GitHub',
+                },
+              },
+            ],
+          },
+          {
+            name: 'Build',
+            actions: [
+              {
+                name: 'BuildAction',
+                actionTypeId: {
+                  category: 'Build',
+                  owner: 'AWS',
+                  version: '1',
+                  provider: 'CodeBuild',
+                },
+              },
+            ],
+          },
+        ],
       },
     }
 
