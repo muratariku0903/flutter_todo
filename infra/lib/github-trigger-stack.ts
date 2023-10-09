@@ -16,6 +16,7 @@ export class GithubTriggerStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
       entry: path.join(__dirname, '../handlers/github-trigger-lambda.ts'),
+      // lambdaで使用する環境変数をセット
       environment: {
         AWS_GITHUB_TRIGGER_STACK_NAME: 'GithubTriggerStack',
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY: 'exportGithubTriggerPipelineRoleArn',
@@ -24,7 +25,12 @@ export class GithubTriggerStack extends cdk.Stack {
     })
     githubTriggerLambda.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['codepipeline:ListPipelines', 'cloudformation:DescribeStacks', 'cloudformation:ListStacks'],
+        actions: [
+          'codepipeline:ListPipelines',
+          'cloudformation:DescribeStacks',
+          'cloudformation:ListStacks',
+          'codepipeline:CreatePipeline',
+        ],
         resources: ['*'],
       })
     )

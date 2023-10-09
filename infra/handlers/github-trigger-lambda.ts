@@ -74,8 +74,8 @@ const createPipeline = async (branchName: string): Promise<void> => {
   try {
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
     const [roleArn, artifactBucketName] = await Promise.all([
-      getValueFromStackOutput(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
-      getValueFromStackOutput(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
+      getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
+      getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
     ])
 
     const pipelineName = `pipeline-${branchName}`
@@ -102,8 +102,8 @@ const createPipeline = async (branchName: string): Promise<void> => {
   }
 }
 
-const getValueFromStackOutput = async (key: string): Promise<string> => {
-  console.log(`start ${getValueFromStackOutput.name} key: ${key}`)
+const getValueFromStackOutputByKey = async (key: string): Promise<string> => {
+  console.log(`start ${getValueFromStackOutputByKey.name} key: ${key}`)
 
   try {
     const stackName = AWS_GITHUB_TRIGGER_STACK_NAME
@@ -134,6 +134,6 @@ const getValueFromStackOutput = async (key: string): Promise<string> => {
     console.log(e)
     throw e
   } finally {
-    console.log(`end ${getValueFromStackOutput.name}`)
+    console.log(`end ${getValueFromStackOutputByKey.name}`)
   }
 }
