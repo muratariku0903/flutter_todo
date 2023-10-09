@@ -49,15 +49,15 @@ export class GithubTriggerStack extends cdk.Stack {
     webhook.addMethod('POST')
 
     // pipeline用のRoleを作成してエクスポートしておく
-    const role = new iam.Role(this, 'githubTriggerPipelineRole', {
+    const pipelineRole = new iam.Role(this, 'githubTriggerPipelineRole', {
       roleName: 'githubTriggerPipelineRole',
       description: 'role for pipeline triggered by github event.',
       assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
     })
-    role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'))
+    pipelineRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'))
 
     new cdk.CfnOutput(this, 'exportGithubTriggerPipelineRoleArn', {
-      value: role.roleArn,
+      value: pipelineRole.roleArn,
       description: 'role for pipeline triggered by github event.',
       exportName: 'exportGithubTriggerPipelineRoleArn', // .envの値を参照したい
     })
