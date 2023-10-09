@@ -12,6 +12,8 @@ const {
   AWS_GITHUB_TRIGGER_STACK_NAME,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+  OWNER_NAME,
+  REPOSITORY_NAME,
 } = process.env
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
@@ -97,7 +99,13 @@ const createPipeline = async (branchName: string): Promise<void> => {
                   category: 'Source',
                   owner: 'AWS',
                   version: '1',
-                  provider: 'GitHub',
+                  // GitHub との接続を管理するための AWS のサービス
+                  provider: 'CodeStarSourceConnection',
+                },
+                configuration: {
+                  OWNER_NAME: OWNER_NAME ?? '',
+                  REPOSITORY_NAME: REPOSITORY_NAME ?? '',
+                  branchName: branchName,
                 },
               },
             ],

@@ -4,6 +4,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as codestarconnections from 'aws-cdk-lib/aws-codestarconnections'
 import path = require('path')
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
@@ -21,6 +22,8 @@ export class GithubTriggerStack extends cdk.Stack {
         AWS_GITHUB_TRIGGER_STACK_NAME: 'GithubTriggerStack',
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY: 'exportGithubTriggerPipelineRoleArn',
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY: 'exportGithubTriggerPipelineArtifactBucketName',
+        OWNER_NAME: 'muratariku0903',
+        REPOSITORY_NAME: 'flutter_todo',
       },
     })
     githubTriggerLambda.addToRolePolicy(
@@ -72,5 +75,18 @@ export class GithubTriggerStack extends cdk.Stack {
       description: 'bucket to store artifact sharing pipeline',
       exportName: 'exportGithubTriggerPipelineArtifactBucketName', // .envの値を参照したい
     })
+
+    // PipelineのソースステージでGithubと接続するためのコネクション
+    // const connections = new codestarconnections.CfnConnection(this, 'connections', {
+    //   providerType: 'Github',
+    // })
+    // const sourceOutput = new codepipeline.Artifact()
+    // const sourceAction = new codepipeline_actions.CodeStarConnectionsSourceAction({
+    //   actionName: 'BitBucket_Source',
+    //   owner: 'aws',
+    //   repo: 'aws-cdk',
+    //   output: sourceOutput,
+    //   connectionArn: 'arn:aws:codestar-connections:us-east-1:123456789012:connection/12345678-abcd-12ab-34cdef5678gh',
+    // })
   }
 }
