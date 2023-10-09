@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["cupertino", "precache"]
+  "cSpell.words": ["cupertino", "precache"],
+  "java.compile.nullAnalysis.mode": "disabled"
 }

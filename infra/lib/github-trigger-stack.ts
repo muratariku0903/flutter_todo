@@ -13,12 +13,18 @@ export class GithubTriggerStack extends cdk.Stack {
       ...props,
     })
 
-    // GithubへのPUSHでトリガーされるLambda
+    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
       entry: path.join(__dirname, '../handlers/github-trigger-lambda.ts'),
     })
+    githubTriggerLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['codepipeline:ListPipelines', 'cloudformation:DescribeStacks'],
+        resources: ['*'],
+      })
+    )
 
     // 上記のLambdaをAPIとして公開する
     const githubTriggerApi = new apigateway.LambdaRestApi(this, 'githubTriggerApi', {
