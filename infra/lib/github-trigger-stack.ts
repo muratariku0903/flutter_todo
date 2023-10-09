@@ -9,15 +9,18 @@ import path = require('path')
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
 export class GithubTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, {
-      ...props,
-    })
+    super(scope, id, props)
 
     // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
       entry: path.join(__dirname, '../handlers/github-trigger-lambda.ts'),
+      environment: {
+        AWS_GITHUB_TRIGGER_STACK_NAME: 'GithubTriggerStack',
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY: 'exportGithubTriggerPipelineRoleArn',
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY: 'exportGithubTriggerPipelineArtifactBucketName',
+      },
     })
     githubTriggerLambda.addToRolePolicy(
       new iam.PolicyStatement({

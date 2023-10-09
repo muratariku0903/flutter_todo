@@ -7,11 +7,14 @@ import {
   CreatePipelineCommandInput,
 } from '@aws-sdk/client-codepipeline'
 import { PipelineSummary } from 'aws-sdk/clients/codepipeline'
-import * as dotenv from 'dotenv'
+const {
+  AWS_REGION,
+  AWS_GITHUB_TRIGGER_STACK_NAME,
+  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
+  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+} = process.env
 
-dotenv.config()
-
-const codePipelineClient = new CodePipelineClient({ region: process.env.AWS_REGION })
+const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const cloudformation = new CloudFormation()
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -71,8 +74,8 @@ const createPipeline = async (branchName: string): Promise<void> => {
   try {
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
     const [roleArn, artifactBucketName] = await Promise.all([
-      getValueFromStackOutput(process.env.AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
-      getValueFromStackOutput(process.env.AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
+      getValueFromStackOutput(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
+      getValueFromStackOutput(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
     ])
 
     const pipelineName = `pipeline-${branchName}`
@@ -103,7 +106,8 @@ const getValueFromStackOutput = async (key: string): Promise<string> => {
   console.log(`start ${getValueFromStackOutput.name} key: ${key}`)
 
   try {
-    const stackName = process.env.AWS_GITHUB_TRIGGER_STACK_NAME
+    const stackName = AWS_GITHUB_TRIGGER_STACK_NAME
+    console.log(`stackName: ${stackName}`)
     const exportedOutputKey = key
     const stack = await cloudformation.describeStacks({ StackName: stackName }).promise()
 
