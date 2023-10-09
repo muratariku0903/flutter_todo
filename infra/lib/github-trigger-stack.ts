@@ -30,8 +30,10 @@ export class GithubTriggerStack extends cdk.Stack {
           'cloudformation:DescribeStacks',
           'cloudformation:ListStacks',
           'codepipeline:CreatePipeline',
+          'iam:PassRole',
         ],
         resources: ['*'],
+        effect: iam.Effect.ALLOW,
       })
     )
 
