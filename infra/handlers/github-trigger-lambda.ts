@@ -76,7 +76,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
     ])
 
     const pipelineName = `pipeline-${branchName}`
-    const params = {
+    const params: CreatePipelineCommandInput = {
       pipeline: {
         name: pipelineName,
         roleArn: roleArn,

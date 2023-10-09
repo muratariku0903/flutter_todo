@@ -21,7 +21,7 @@ export class GithubTriggerStack extends cdk.Stack {
     })
     githubTriggerLambda.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['codepipeline:ListPipelines', 'cloudformation:DescribeStacks'],
+        actions: ['codepipeline:ListPipelines', 'cloudformation:DescribeStacks', 'cloudformation:ListStacks'],
         resources: ['*'],
       })
     )
