@@ -36,7 +36,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'codepipeline:CreatePipeline',
           'iam:PassRole',
           'ssm:GetParameter',
-          'codestar-connections:PassConnection',
+          'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
         ],
         resources: ['*'],
         effect: iam.Effect.ALLOW,

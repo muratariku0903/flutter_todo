@@ -108,8 +108,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
                 configuration: {
                   // Githubと接続する通信を識別するARN
                   ConnectionArn: connectionArn,
-                  Owner: OWNER_NAME ?? '',
-                  Repo: REPOSITORY_NAME ?? '',
+                  FullRepositoryId: `${OWNER_NAME}/${REPOSITORY_NAME}`,
                   BranchName: branchName,
                 },
               },
