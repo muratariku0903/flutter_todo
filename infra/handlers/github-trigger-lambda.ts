@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
-import { CloudFormation } from 'aws-sdk'
+import { CloudFormation, SSM } from 'aws-sdk'
 import {
   CodePipelineClient,
   CreatePipelineCommand,
@@ -14,10 +14,12 @@ const {
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
   OWNER_NAME,
   REPOSITORY_NAME,
+  GITHUB_CONNECTION_ARN_SSM_KEY,
 } = process.env
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const cloudformation = new CloudFormation()
+const ssm = new SSM()
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
@@ -75,9 +77,10 @@ const createPipeline = async (branchName: string): Promise<void> => {
 
   try {
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName] = await Promise.all([
+    const [roleArn, artifactBucketName, connectionArn] = await Promise.all([
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
+      getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY ?? ''),
     ])
 
     const pipelineName = `pipeline-${branchName}`
@@ -103,9 +106,11 @@ const createPipeline = async (branchName: string): Promise<void> => {
                   provider: 'CodeStarSourceConnection',
                 },
                 configuration: {
-                  OWNER_NAME: OWNER_NAME ?? '',
-                  REPOSITORY_NAME: REPOSITORY_NAME ?? '',
-                  branchName: branchName,
+                  // Githubと接続する通信を識別するARN
+                  ConnectionArn: connectionArn,
+                  Owner: OWNER_NAME ?? '',
+                  Repo: REPOSITORY_NAME ?? '',
+                  BranchName: branchName,
                 },
               },
             ],
@@ -135,6 +140,27 @@ const createPipeline = async (branchName: string): Promise<void> => {
     throw e
   } finally {
     console.log(`end ${createPipeline.name}`)
+  }
+}
+
+const getValueFromParameterStore = async (key: string): Promise<string> => {
+  console.log(`start ${getValueFromParameterStore.name} key: ${key}`)
+
+  try {
+    const res = await ssm.getParameter({ Name: key, WithDecryption: true }).promise()
+    console.log(`value : ${res.Parameter?.Value}`)
+
+    const value = res.Parameter?.Value
+    if (!value) {
+      throw new Error('fail fetch value from parameter store')
+    }
+
+    return value
+  } catch (e) {
+    console.log(e)
+    throw e
+  } finally {
+    console.log(`end ${getValueFromParameterStore.name}`)
   }
 }
 

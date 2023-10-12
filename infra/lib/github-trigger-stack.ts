@@ -24,6 +24,7 @@ export class GithubTriggerStack extends cdk.Stack {
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY: 'exportGithubTriggerPipelineArtifactBucketName',
         OWNER_NAME: 'muratariku0903',
         REPOSITORY_NAME: 'flutter_todo',
+        GITHUB_CONNECTION_ARN_SSM_KEY: 'todo_github_connectionarn',
       },
     })
     githubTriggerLambda.addToRolePolicy(
