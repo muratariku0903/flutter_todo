@@ -102,7 +102,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
                   category: 'Source',
                   owner: 'AWS',
                   version: '1',
-                  // GitHub との接続を管理するための AWS のサービス
+                  // GitHub との接続を管理するためのAWSのサービス
                   provider: 'CodeStarSourceConnection',
                 },
                 configuration: {
@@ -126,7 +126,11 @@ const createPipeline = async (branchName: string): Promise<void> => {
                   version: '1',
                   provider: 'CodeBuild',
                 },
+                configuration: {
+                  ProjectName: 'CodeBuild',
+                },
                 inputArtifacts: [{ name: 'SourceOutput' }],
+                outputArtifacts: [{ name: 'buildOutput' }],
               },
             ],
           },
