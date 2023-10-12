@@ -39,7 +39,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
       }
     }
 
-    // Pipelineリソースを作成
+    // Pipelineリソースを作成 
     await createPipeline(branchName)
 
     return {
