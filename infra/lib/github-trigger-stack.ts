@@ -36,6 +36,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'codepipeline:CreatePipeline',
           'iam:PassRole',
           'ssm:GetParameter',
+          'codestar-connections:PassConnection',
         ],
         resources: ['*'],
         effect: iam.Effect.ALLOW,
