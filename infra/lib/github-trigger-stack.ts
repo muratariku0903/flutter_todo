@@ -35,6 +35,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'cloudformation:ListStacks',
           'codepipeline:CreatePipeline',
           'iam:PassRole',
+          'ssm:GetParameter',
         ],
         resources: ['*'],
         effect: iam.Effect.ALLOW,
@@ -76,18 +77,5 @@ export class GithubTriggerStack extends cdk.Stack {
       description: 'bucket to store artifact sharing pipeline',
       exportName: 'exportGithubTriggerPipelineArtifactBucketName', // .envの値を参照したい
     })
-
-    // PipelineのソースステージでGithubと接続するためのコネクション
-    // const connections = new codestarconnections.CfnConnection(this, 'connections', {
-    //   providerType: 'Github',
-    // })
-    // const sourceOutput = new codepipeline.Artifact()
-    // const sourceAction = new codepipeline_actions.CodeStarConnectionsSourceAction({
-    //   actionName: 'BitBucket_Source',
-    //   owner: 'aws',
-    //   repo: 'aws-cdk',
-    //   output: sourceOutput,
-    //   connectionArn: 'arn:aws:codestar-connections:us-east-1:123456789012:connection/12345678-abcd-12ab-34cdef5678gh',
-    // })
   }
 }
