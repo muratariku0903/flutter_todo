@@ -69,9 +69,14 @@ export class GithubTriggerStack extends cdk.Stack {
     const codebuildRole = new iam.Role(this, 'githubTriggerCodeBuildRole', {
       roleName: 'githubTriggerCodeBuildRole',
       description: 'role for codebuild triggered by github event.',
-      assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+      assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
     })
-    codebuildRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'))
+    const codebuildPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['s3:ListBucket', 's3:GetBucketLocation', 's3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+      resources: ['*'], // 実際の環境では適切なリソースのARNを指定することを推奨します
+    })
+    codebuildRole.addToPolicy(codebuildPolicy)
     new cdk.CfnOutput(this, 'exportGithubTriggerCodeBuildRoleArn', {
       value: codebuildRole.roleArn,
       description: 'role for codebuild triggered by github event.',
