@@ -88,7 +88,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
     ])
 
     // codebuildプロジェクトを作成
-    const codebuildProjectName = await createCodeBuildProject(branchName, artifactBucketName)
+    const codebuildProjectName = await createCodeBuildProject(branchName)
 
     const pipelineName = `pipeline-${branchName}`
     const params: CreatePipelineCommandInput = {
@@ -156,7 +156,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
   }
 }
 
-const createCodeBuildProject = async (branchName: string, artifactBucketName: string): Promise<string> => {
+const createCodeBuildProject = async (branchName: string): Promise<string> => {
   console.log(`start ${createCodeBuildProject.name}:${branchName}`)
 
   const projectName = `CodeBuild-${branchName}`
@@ -171,12 +171,10 @@ const createCodeBuildProject = async (branchName: string, artifactBucketName: st
       name: projectName,
       description: `Build project for branch : ${branchName}`,
       source: {
-        // コードパイプラインのステージ間でソースコードを受け取る前提
-        type: 'CODEPIPELINE',
+        type: 'CODEPIPELINE', // コードパイプラインのステージ間でソースコードを受け取る前提
       },
       artifacts: {
-        type: 'S3',
-        location: artifactBucketName,
+        type: 'CODEPIPELINE', // コードパイプラインのステージ間でアーティファクトを受け取る前提
       },
       environment: {
         type: 'LINUX_CONTAINER',
