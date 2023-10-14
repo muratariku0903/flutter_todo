@@ -34,7 +34,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'cloudformation:DescribeStacks',
           'cloudformation:ListStacks',
           'codepipeline:CreatePipeline',
-          'iam:PassRole',
+          'iam:PassRole', // Lambdaがさまざまなサービス権限を生成したPipelineに委譲するための権限
           'ssm:GetParameter',
           'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
         ],

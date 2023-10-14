@@ -119,6 +119,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
             name: 'Build',
             actions: [
               {
+                // ソースコードのBuildの仕方はブランチごとに変更できた方がいい。
                 name: 'BuildAction',
                 actionTypeId: {
                   category: 'Build',
