@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
-import { CloudFormation, SSM } from 'aws-sdk'
+import { CloudFormation, SSM, CodeBuild, SecretsManager } from 'aws-sdk'
 import {
   CodePipelineClient,
   CreatePipelineCommand,
@@ -7,11 +7,15 @@ import {
   CreatePipelineCommandInput,
 } from '@aws-sdk/client-codepipeline'
 import { PipelineSummary } from 'aws-sdk/clients/codepipeline'
+import { CreateProjectInput } from 'aws-sdk/clients/codebuild'
 const {
   AWS_REGION,
   AWS_GITHUB_TRIGGER_STACK_NAME,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
+  AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+  SECRET_GITHUB_TOKEN_NAME,
+  SECRET_GITHUB_TOKEN_KEY,
   OWNER_NAME,
   REPOSITORY_NAME,
   GITHUB_CONNECTION_ARN_SSM_KEY,
@@ -20,6 +24,8 @@ const {
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const cloudformation = new CloudFormation()
 const ssm = new SSM()
+const codebuild = new CodeBuild()
+const secretsManager = new SecretsManager()
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
@@ -39,7 +45,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
       }
     }
 
-    // Pipelineリソースを作成 
+    // Pipelineリソースを作成
     await createPipeline(branchName)
 
     return {
@@ -73,7 +79,7 @@ const getExistPipeline = async (branchName: string): Promise<PipelineSummary | u
 }
 
 const createPipeline = async (branchName: string): Promise<void> => {
-  console.log(`start ${createPipeline.name}`)
+  console.log(`start ${createPipeline.name}:${branchName}`)
 
   try {
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
@@ -82,6 +88,9 @@ const createPipeline = async (branchName: string): Promise<void> => {
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
       getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY ?? ''),
     ])
+
+    // codebuildプロジェクトを作成
+    const codebuildProjectName = await createCodeBuildProject(branchName, artifactBucketName)
 
     const pipelineName = `pipeline-${branchName}`
     const params: CreatePipelineCommandInput = {
@@ -128,7 +137,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
                   provider: 'CodeBuild',
                 },
                 configuration: {
-                  ProjectName: 'CodeBuild',
+                  ProjectName: codebuildProjectName,
                 },
                 inputArtifacts: [{ name: 'SourceOutput' }],
                 outputArtifacts: [{ name: 'buildOutput' }],
@@ -146,6 +155,53 @@ const createPipeline = async (branchName: string): Promise<void> => {
     throw e
   } finally {
     console.log(`end ${createPipeline.name}`)
+  }
+}
+
+const createCodeBuildProject = async (branchName: string, artifactBucketName: string): Promise<string> => {
+  console.log(`start ${createCodeBuildProject.name}:${branchName}`)
+
+  const projectName = `CodeBuild-${branchName}`
+
+  try {
+    // codebuildプロジェクトを構築するための必要なロールを取得
+    const [roleArn, githubAuthToken] = await Promise.all([
+      getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY ?? ''),
+      getValueFromSecretManager(SECRET_GITHUB_TOKEN_NAME ?? '', SECRET_GITHUB_TOKEN_KEY ?? ''),
+    ])
+
+    const params: CreateProjectInput = {
+      name: projectName,
+      description: `Build project for branch : ${branchName}`,
+      source: {
+        type: 'GITHUB',
+        location: `https://github.com/${OWNER_NAME}/${REPOSITORY_NAME}.git`,
+        auth: {
+          type: 'OAUTH',
+          resource: githubAuthToken,
+        },
+      },
+      artifacts: {
+        type: 'S3',
+        location: artifactBucketName,
+      },
+      environment: {
+        type: 'LINUX_CONTAINER',
+        computeType: 'BUILD_GENERAL1_SMALL',
+        image: 'aws/codebuild/standard:5.0',
+      },
+      serviceRole: roleArn,
+    }
+
+    await codebuild.createProject(params).promise()
+    console.log(`Created codebuild project: ${branchName}`)
+
+    return projectName
+  } catch (e) {
+    console.log(e)
+    throw e
+  } finally {
+    console.log(`end ${createCodeBuildProject.name}`)
   }
 }
 
@@ -203,5 +259,28 @@ const getValueFromStackOutputByKey = async (key: string): Promise<string> => {
     throw e
   } finally {
     console.log(`end ${getValueFromStackOutputByKey.name}`)
+  }
+}
+
+const getValueFromSecretManager = async (secretName: string, keyName: string): Promise<string> => {
+  console.log(`start ${getValueFromSecretManager.name} secretName: ${secretName} keyName: ${keyName}`)
+
+  try {
+    const res = await secretsManager.getSecretValue({ SecretId: secretName }).promise()
+    if (!res || !res.SecretString) {
+      throw new Error('undefined Secret data')
+    }
+
+    const value = JSON.parse(res.SecretString)[keyName] as string
+    if (!value) {
+      throw new Error('undefined Secret data')
+    }
+
+    return value
+  } catch (e) {
+    console.log(e)
+    throw e
+  } finally {
+    console.log(`end ${getValueFromSecretManager.name}`)
   }
 }
