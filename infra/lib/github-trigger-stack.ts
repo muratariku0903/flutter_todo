@@ -22,6 +22,8 @@ export class GithubTriggerStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
       entry: path.join(__dirname, '../handlers/github-trigger-lambda.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
       // lambdaで使用する環境変数をセット
       environment: {
         AWS_GITHUB_TRIGGER_STACK_NAME: 'GithubTriggerStack',
@@ -38,6 +40,7 @@ export class GithubTriggerStack extends cdk.Stack {
     })
     githubTriggerLambda.addToRolePolicy(
       new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
         actions: [
           'codepipeline:ListPipelines',
           'cloudformation:DescribeStacks',
@@ -47,10 +50,10 @@ export class GithubTriggerStack extends cdk.Stack {
           'ssm:GetParameter',
           'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
           'codebuild:CreateProject',
+          'codebuild:BatchGetProjects',
           'secretsmanager:GetSecretValue',
         ],
         resources: ['*'],
-        effect: iam.Effect.ALLOW,
       })
     )
 

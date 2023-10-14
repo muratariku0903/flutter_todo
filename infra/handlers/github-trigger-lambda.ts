@@ -59,7 +59,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     }
   }
 }
-
 const getExistPipeline = async (branchName: string): Promise<PipelineSummary | undefined> => {
   console.log(`start ${getExistPipeline.name}`)
 
@@ -162,6 +161,11 @@ const createCodeBuildProject = async (branchName: string): Promise<string> => {
   const projectName = `CodeBuild-${branchName}`
 
   try {
+    const existCodeBuildProject = await codebuild.batchGetProjects({ names: [projectName] }).promise()
+    if (existCodeBuildProject.projects && existCodeBuildProject.projects?.length > 0) {
+      throw new Error('codebuild project already exists')
+    }
+
     // codebuildプロジェクトを構築するための必要なロールを取得
     const [roleArn] = await Promise.all([
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY ?? ''),
