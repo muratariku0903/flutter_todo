@@ -14,8 +14,6 @@ const {
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
   AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
-  SECRET_GITHUB_TOKEN_NAME,
-  SECRET_GITHUB_TOKEN_KEY,
   OWNER_NAME,
   REPOSITORY_NAME,
   GITHUB_CONNECTION_ARN_SSM_KEY,
@@ -165,21 +163,16 @@ const createCodeBuildProject = async (branchName: string, artifactBucketName: st
 
   try {
     // codebuildプロジェクトを構築するための必要なロールを取得
-    const [roleArn, githubAuthToken] = await Promise.all([
+    const [roleArn] = await Promise.all([
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY ?? ''),
-      getValueFromSecretManager(SECRET_GITHUB_TOKEN_NAME ?? '', SECRET_GITHUB_TOKEN_KEY ?? ''),
     ])
 
     const params: CreateProjectInput = {
       name: projectName,
       description: `Build project for branch : ${branchName}`,
       source: {
-        type: 'GITHUB',
-        location: `https://github.com/${OWNER_NAME}/${REPOSITORY_NAME}.git`,
-        auth: {
-          type: 'OAUTH',
-          resource: githubAuthToken,
-        },
+        // コードパイプラインのステージ間でソースコードを受け取る前提
+        type: 'CODEPIPELINE',
       },
       artifacts: {
         type: 'S3',

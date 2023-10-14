@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as s3 from 'aws-cdk-lib/aws-s3'
-import * as codebuild from 'aws-cdk-lib/aws-codebuild'
 import path = require('path')
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
@@ -85,7 +84,19 @@ export class GithubTriggerStack extends cdk.Stack {
       description: 'role for pipeline triggered by github event.',
       assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
     })
-    pipelineRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'))
+    const pipelinePolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'codestar-connections:UseConnection',
+        's3:ListBucket',
+        's3:GetBucketLocation',
+        's3:PutObject',
+        's3:GetObject',
+        's3:DeleteObject',
+      ],
+      resources: ['*'], // 実際の環境では適切なリソースのARNを指定することを推奨します
+    })
+    pipelineRole.addToPolicy(pipelinePolicy)
     new cdk.CfnOutput(this, 'exportGithubTriggerPipelineRoleArn', {
       value: pipelineRole.roleArn,
       description: 'role for pipeline triggered by github event.',
