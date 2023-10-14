@@ -276,6 +276,8 @@ const getValueFromSecretManager = async (secretName: string, keyName: string): P
       throw new Error('undefined Secret data')
     }
 
+    console.log(`secret value: ${value}`)
+
     return value
   } catch (e) {
     console.log(e)
