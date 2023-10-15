@@ -8,11 +8,6 @@ phases:
       - export PATH="$PATH:`pwd`/flutter/bin"
       - flutter precache
       - flutter doctor
-
-      - echo "Installing Node.js..."
-      - curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-      - ~/.nvm/nvm.sh
-      - nvm install node
       - node -v
       - npm -v
 
