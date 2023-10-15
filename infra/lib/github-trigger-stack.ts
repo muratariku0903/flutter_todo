@@ -76,7 +76,17 @@ export class GithubTriggerStack extends cdk.Stack {
     })
     const codebuildPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ['s3:ListBucket', 's3:GetBucketLocation', 's3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+      actions: [
+        's3:ListBucket',
+        's3:GetBucketLocation',
+        's3:PutObject',
+        's3:GetObject',
+        's3:DeleteObject',
+        // codebuildがCloudWatchにログを出力する権限
+        'logs:CreateLogGroup',
+        'logs:CreateLogStream',
+        'logs:PutLogEvents',
+      ],
       resources: ['*'], // 実際の環境では適切なリソースのARNを指定することを推奨します
     })
     codebuildRole.addToPolicy(codebuildPolicy)
