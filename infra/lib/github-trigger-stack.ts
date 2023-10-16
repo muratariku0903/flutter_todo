@@ -112,6 +112,7 @@ export class GithubTriggerStack extends cdk.Stack {
         's3:GetObject',
         's3:DeleteObject',
         'codebuild:StartBuild',
+        'codebuild:BatchGetBuilds',
       ],
       resources: ['*'], // 実際の環境では適切なリソースのARNを指定することを推奨します
     })

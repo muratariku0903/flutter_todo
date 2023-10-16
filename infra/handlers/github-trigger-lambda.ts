@@ -1,12 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
-import { CloudFormation, SSM, CodeBuild, SecretsManager } from 'aws-sdk'
+import { CloudFormation, SSM, CodeBuild, SecretsManager, CodePipeline } from 'aws-sdk'
 import {
   CodePipelineClient,
   CreatePipelineCommand,
   ListPipelinesCommand,
   CreatePipelineCommandInput,
 } from '@aws-sdk/client-codepipeline'
-import { PipelineSummary } from 'aws-sdk/clients/codepipeline'
 import { CreateProjectInput } from 'aws-sdk/clients/codebuild'
 const {
   AWS_REGION,
@@ -24,6 +23,7 @@ const cloudformation = new CloudFormation()
 const ssm = new SSM()
 const codebuild = new CodeBuild()
 const secretsManager = new SecretsManager()
+const codepipeline = new CodePipeline()
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
@@ -31,17 +31,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
     let branchName: string = body.ref.split('/').pop()
     console.log('Branch Name:', branchName)
-
-    // 既存のPipelineがあるかチェック
-    const existPipeline = await getExistPipeline(branchName)
-    if (existPipeline) {
-      console.log(`Pipeline ${existPipeline.name} already exists.`)
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify('Finish! because Pipeline already exists'),
-      }
-    }
 
     // Pipelineリソースを作成
     await createPipeline(branchName)
@@ -59,26 +48,23 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     }
   }
 }
-const getExistPipeline = async (branchName: string): Promise<PipelineSummary | undefined> => {
-  console.log(`start ${getExistPipeline.name}`)
 
-  try {
-    const listPipelinesOutput = await codePipelineClient.send(new ListPipelinesCommand({}))
-    const existPipeline = listPipelinesOutput.pipelines?.find((pipeline) => pipeline.name === `pipeline-${branchName}`)
-
-    return existPipeline
-  } catch (e) {
-    console.log(e)
-    throw e
-  } finally {
-    console.log(`end ${getExistPipeline.name}`)
-  }
-}
-
-const createPipeline = async (branchName: string): Promise<void> => {
+const createPipeline = async (branchName: string, overwriting: boolean = true): Promise<void> => {
   console.log(`start ${createPipeline.name}:${branchName}`)
 
   try {
+    // 同じPipelineがすでに存在するなら削除して作り直したい
+    const listPipelinesOutput = await codePipelineClient.send(new ListPipelinesCommand({}))
+    const existPipeline = listPipelinesOutput.pipelines?.find((pipeline) => pipeline.name === `pipeline-${branchName}`)
+    if (existPipeline) {
+      if (overwriting) {
+        console.log(`Delete Pipeline ${existPipeline.name} to update new version`)
+        await codepipeline.deletePipeline({ name: existPipeline.name ?? '' }).promise()
+      } else {
+        throw new Error(`Pipeline ${existPipeline.name} already exists.`)
+      }
+    }
+
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
     const [roleArn, artifactBucketName, connectionArn] = await Promise.all([
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
@@ -117,6 +103,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
                   FullRepositoryId: `${OWNER_NAME}/${REPOSITORY_NAME}`,
                   BranchName: branchName,
                 },
+                // ブランチごとに識別させなくて大丈夫？
                 outputArtifacts: [{ name: 'SourceOutput' }],
               },
             ],
@@ -155,7 +142,7 @@ const createPipeline = async (branchName: string): Promise<void> => {
   }
 }
 
-const createCodeBuildProject = async (branchName: string): Promise<string> => {
+const createCodeBuildProject = async (branchName: string, overwriting = true): Promise<string> => {
   console.log(`start ${createCodeBuildProject.name}:${branchName}`)
 
   const projectName = `CodeBuild-${branchName}`
@@ -163,7 +150,12 @@ const createCodeBuildProject = async (branchName: string): Promise<string> => {
   try {
     const existCodeBuildProject = await codebuild.batchGetProjects({ names: [projectName] }).promise()
     if (existCodeBuildProject.projects && existCodeBuildProject.projects?.length > 0) {
-      throw new Error('codebuild project already exists')
+      if (overwriting) {
+        console.log(`Delete CodeBuild Project ${projectName} to update new version`)
+        await codebuild.deleteProject({ name: projectName }).promise()
+      } else {
+        throw new Error('codebuild project already exists')
+      }
     }
 
     // codebuildプロジェクトを構築するための必要なロールを取得
