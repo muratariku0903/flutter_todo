@@ -19,7 +19,7 @@ export class CommonServiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'exportSourceCodeBucketName', {
       value: bucket.bucketName,
       description: 'bucket to store source code',
-      exportName: 'sourceCodeBucketName', // .envの値を参照したい
+      exportName: 'exportSourceCodeBucketName', // .envの値を参照したい
     })
 
     // ブランチごとの配信パスを分ける
