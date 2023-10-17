@@ -50,6 +50,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   }
 }
 
+// TODO すでにPipelineが存在していたら削除して作り直してるけど、トランザクションは大丈夫？削除だけ成功してPipeline構築が失敗するケースとか
 const createPipeline = async (branchName: string, overwriting: boolean = true): Promise<void> => {
   console.log(`start ${createPipeline.name}:${branchName}`)
 
@@ -222,7 +223,7 @@ const getValueFromParameterStore = async (key: string): Promise<string> => {
 
     const value = res.Parameter?.Value
     if (!value) {
-      throw new Error('fail fetch value from parameter store')
+      throw new Error(`fail fetch value from parameter store key: ${key}`)
     }
 
     return value
@@ -244,21 +245,21 @@ const getValueFromStackOutputByKey = async (key: string): Promise<string> => {
     const stack = await cloudformation.describeStacks({ StackName: stackName }).promise()
 
     if (!stack || stack.Stacks?.length === 0 || !stack!.Stacks![0].Outputs) {
-      throw new Error('undefined stack outputs')
+      throw new Error(`undefined stack outputs key: ${key}`)
     }
 
     const outputs = stack.Stacks![0].Outputs
     console.log(`outputs: ${outputs}`)
     const output = outputs.find((o) => o.OutputKey === exportedOutputKey)
     if (!output) {
-      throw new Error('undefined stack output')
+      throw new Error(`undefined stack output key: ${key}`)
     }
 
     const value = output.OutputValue
     console.log(`output value : ${value}`)
 
     if (!value) {
-      throw new Error('undefined value from output')
+      throw new Error(`undefined value from output key: ${key}`)
     }
 
     return value
