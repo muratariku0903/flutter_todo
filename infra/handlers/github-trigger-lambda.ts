@@ -9,14 +9,15 @@ import {
 import { CreateProjectInput } from 'aws-sdk/clients/codebuild'
 const {
   AWS_REGION,
-  AWS_GITHUB_TRIGGER_STACK_NAME,
-  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
-  AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
-  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
-  AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
-  OWNER_NAME,
-  REPOSITORY_NAME,
-  GITHUB_CONNECTION_ARN_SSM_KEY,
+  AWS_COMMON_SERVICE_STACK_NAME = '',
+  AWS_GITHUB_TRIGGER_STACK_NAME = '',
+  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY = '',
+  AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY = '',
+  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY = '',
+  AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '',
+  OWNER_NAME = '',
+  REPOSITORY_NAME = '',
+  GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
@@ -69,10 +70,13 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
     const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName] = await Promise.all([
-      getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
-      getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
-      getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY ?? ''),
-      getValueFromStackOutputByKey(AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY ?? ''),
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
+      getValueFromStackOutputByKey(
+        AWS_GITHUB_TRIGGER_STACK_NAME,
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY
+      ),
+      getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY),
+      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
     ])
 
     // codebuildプロジェクトを作成
@@ -182,7 +186,7 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
 
     // codebuildプロジェクトを構築するための必要なロールを取得
     const [roleArn] = await Promise.all([
-      getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY ?? ''),
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY),
     ])
 
     const params: CreateProjectInput = {
@@ -235,12 +239,10 @@ const getValueFromParameterStore = async (key: string): Promise<string> => {
   }
 }
 
-const getValueFromStackOutputByKey = async (key: string): Promise<string> => {
-  console.log(`start ${getValueFromStackOutputByKey.name} key: ${key}`)
+const getValueFromStackOutputByKey = async (stackName: string, key: string): Promise<string> => {
+  console.log(`start ${getValueFromStackOutputByKey.name} stackName: ${stackName} key: ${key}`)
 
   try {
-    const stackName = AWS_GITHUB_TRIGGER_STACK_NAME
-    console.log(`stackName: ${stackName}`)
     const exportedOutputKey = key
     const stack = await cloudformation.describeStacks({ StackName: stackName }).promise()
 

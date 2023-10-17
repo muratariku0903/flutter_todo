@@ -25,6 +25,7 @@ export class GithubTriggerStack extends cdk.Stack {
       // lambdaで使用する環境変数をセット
       environment: {
         AWS_GITHUB_TRIGGER_STACK_NAME: 'GithubTriggerStack',
+        AWS_COMMON_SERVICE_STACK_NAME: 'CommonServiceStack',
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY: pipelineRoleArnKey,
         AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY: codebuildRoleArnKey,
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY: 'exportGithubTriggerPipelineArtifactBucketName',
