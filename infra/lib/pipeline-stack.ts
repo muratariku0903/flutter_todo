@@ -18,32 +18,32 @@
 
 //     // const branchName = props?.branchName
 
-//     // // create S3 bucket
-//     // const bucket = new s3.Bucket(this, 'todoS3BucketId', {
-//     //   // arrow public read
-//     //   publicReadAccess: true,
-//     //   blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
-//     //   accessControl: s3.BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
-//     //   removalPolicy: cdk.RemovalPolicy.DESTROY,
-//     //   autoDeleteObjects: true,
-//     // })
+//     // create S3 bucket
+//     const bucket = new s3.Bucket(this, 'todoS3BucketId', {
+//       // arrow public read
+//       publicReadAccess: true,
+//       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
+//       accessControl: s3.BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
+//       removalPolicy: cdk.RemovalPolicy.DESTROY,
+//       autoDeleteObjects: true,
+//     })
 
-//     // // CloudFront
-//     // const distribution = new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
-//     //   originConfigs: [
-//     //     {
-//     //       // set origin server
-//     //       s3OriginSource: {
-//     //         s3BucketSource: bucket,
-//     //       },
-//     //       behaviors: [
-//     //         { pathPattern: '/master/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
-//     //         { pathPattern: '/feat/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
-//     //         { isDefaultBehavior: true },
-//     //       ],
-//     //     },
-//     //   ],
-//     // })
+//     // CloudFront
+//     const distribution = new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
+//       originConfigs: [
+//         {
+//           // set origin server
+//           s3OriginSource: {
+//             s3BucketSource: bucket,
+//           },
+//           behaviors: [
+//             { pathPattern: '/master/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+//             { pathPattern: '/feat/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+//             { isDefaultBehavior: true },
+//           ],
+//         },
+//       ],
+//     })
 
 //     const now = new Date()
 

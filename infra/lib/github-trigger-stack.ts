@@ -15,8 +15,6 @@ export class GithubTriggerStack extends cdk.Stack {
     const codebuildRoleArnKey = 'exportGithubTriggerCodeBuildRoleArn'
     const githubOwnerName = 'muratariku0903'
     const githubRepositoryName = 'flutter_todo'
-    const githubTriggerCodeBuildProjectName = 'githubTriggerCodeBuildProject'
-
     // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -30,12 +28,12 @@ export class GithubTriggerStack extends cdk.Stack {
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY: pipelineRoleArnKey,
         AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY: codebuildRoleArnKey,
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY: 'exportGithubTriggerPipelineArtifactBucketName',
+        AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY: 'exportSourceCodeBucketName',
         OWNER_NAME: githubOwnerName,
         REPOSITORY_NAME: githubRepositoryName,
         SECRET_GITHUB_TOKEN_NAME: 'github-pipeline-token',
         SECRET_GITHUB_TOKEN_KEY: 'github-token',
         GITHUB_CONNECTION_ARN_SSM_KEY: 'todo_github_connectionarn',
-        GITHUB_CODE_BUILD_PROJECT_NAME: githubTriggerCodeBuildProjectName,
       },
     })
     githubTriggerLambda.addToRolePolicy(

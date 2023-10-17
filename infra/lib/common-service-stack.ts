@@ -7,7 +7,7 @@ export class CommonServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    // create S3 bucket
+    // ソースコードを保存するバケット
     const bucket = new s3.Bucket(this, 'todoS3BucketId', {
       // arrow public read
       publicReadAccess: true,
@@ -16,8 +16,13 @@ export class CommonServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     })
+    new cdk.CfnOutput(this, 'exportSourceCodeBucketName', {
+      value: bucket.bucketName,
+      description: 'bucket to store source code',
+      exportName: 'sourceCodeBucketName', // .envの値を参照したい
+    })
 
-    // create CloudFront
+    // ブランチごとの配信パスを分ける
     new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
       originConfigs: [
         {

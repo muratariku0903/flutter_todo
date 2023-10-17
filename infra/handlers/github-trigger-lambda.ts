@@ -13,6 +13,7 @@ const {
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
   AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+  AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
   OWNER_NAME,
   REPOSITORY_NAME,
   GITHUB_CONNECTION_ARN_SSM_KEY,
@@ -66,10 +67,11 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName, connectionArn] = await Promise.all([
+    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName] = await Promise.all([
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY ?? ''),
       getValueFromStackOutputByKey(AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY ?? ''),
       getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY ?? ''),
+      getValueFromStackOutputByKey(AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY ?? ''),
     ])
 
     // codebuildプロジェクトを作成
@@ -112,7 +114,6 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             name: 'Build',
             actions: [
               {
-                // ソースコードのBuildの仕方はブランチごとに変更できた方がいい。
                 name: 'BuildAction',
                 actionTypeId: {
                   category: 'Build',
@@ -124,7 +125,27 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   ProjectName: codebuildProjectName,
                 },
                 inputArtifacts: [{ name: 'SourceOutput' }],
-                outputArtifacts: [{ name: 'buildOutput' }],
+                outputArtifacts: [{ name: 'BuildOutput' }],
+              },
+            ],
+          },
+          {
+            name: 'Deploy',
+            actions: [
+              {
+                name: 'DeployAction',
+                actionTypeId: {
+                  category: 'Deploy',
+                  owner: 'AWS',
+                  version: '1',
+                  provider: 'S3',
+                },
+                configuration: {
+                  BucketName: sourceCodeBucketName,
+                  ObjectKey: branchName,
+                  Extract: 'true', // 元ファイルであるアーティファクトがzipになっていた場合は自動で展開してくれる
+                },
+                inputArtifacts: [{ name: 'BuildOutput' }],
               },
             ],
           },
