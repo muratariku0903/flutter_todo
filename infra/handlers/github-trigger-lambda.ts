@@ -282,7 +282,7 @@ const getValueFromSecretManager = async (secretName: string, keyName: string): P
 
     const value = JSON.parse(res.SecretString)[keyName] as string
     if (!value) {
-      throw new Error('undefined Secret data')
+      throw new Error(`undefined Secret data secretName: ${secretName}, keyName: ${keyName}`)
     }
 
     console.log(`secret value: ${value}`)
