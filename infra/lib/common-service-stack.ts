@@ -11,8 +11,8 @@ export class CommonServiceStack extends cdk.Stack {
     const bucket = new s3.Bucket(this, 'todoS3BucketId', {
       // arrow public read
       publicReadAccess: true,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
-      accessControl: s3.BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
+      // blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
+      // accessControl: s3.BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     })
