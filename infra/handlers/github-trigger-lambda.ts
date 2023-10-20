@@ -202,6 +202,8 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
         type: 'LINUX_CONTAINER',
         computeType: 'BUILD_GENERAL1_SMALL',
         image: 'aws/codebuild/standard:5.0',
+        // build時に参照する環境変数をセット
+        environmentVariables: [{ name: 'BRANCH_NAME', value: branchName, type: 'PLAINTEXT' }],
       },
       serviceRole: roleArn,
     }
