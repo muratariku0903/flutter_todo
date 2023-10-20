@@ -11,8 +11,7 @@ export class CommonServiceStack extends cdk.Stack {
     const bucket = new s3.Bucket(this, 'todoS3BucketId', {
       // arrow public read
       publicReadAccess: true,
-      // blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
-      // accessControl: s3.BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     })
@@ -23,21 +22,21 @@ export class CommonServiceStack extends cdk.Stack {
     })
 
     // ブランチごとの配信パスを分ける
-    new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
-      originConfigs: [
-        {
-          // set origin server
-          s3OriginSource: {
-            s3BucketSource: bucket,
-          },
-          behaviors: [
-            { pathPattern: '/master/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
-            { pathPattern: '/develop/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
-            { pathPattern: '/feat/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
-            { isDefaultBehavior: true },
-          ],
-        },
-      ],
-    })
+    // new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
+    //   originConfigs: [
+    //     {
+    //       // set origin server
+    //       s3OriginSource: {
+    //         s3BucketSource: bucket,
+    //       },
+    //       behaviors: [
+    //         { pathPattern: '/master/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+    //         { pathPattern: '/develop/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+    //         { pathPattern: '/feat/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+    //         { isDefaultBehavior: true },
+    //       ],
+    //     },
+    //   ],
+    // })
   }
 }
