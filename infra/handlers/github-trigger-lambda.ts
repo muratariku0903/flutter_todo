@@ -168,7 +168,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                 actionTypeId: {
                   category: 'Invoke',
                   owner: 'AWS',
-                  provider: 'lambda',
+                  provider: 'Lambda',
                   version: '1',
                 },
                 configuration: {
