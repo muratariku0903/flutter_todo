@@ -12,6 +12,7 @@ export class CommonServiceStack extends cdk.Stack {
       // arrow public read
       publicReadAccess: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
+      websiteIndexDocument: 'index.html',
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     })
@@ -22,6 +23,22 @@ export class CommonServiceStack extends cdk.Stack {
     })
 
     // ブランチごとの配信パスを分ける
+    new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
+      originConfigs: [
+        {
+          customOriginSource: {
+            domainName: bucket.bucketWebsiteDomainName,
+            originProtocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          },
+          behaviors: [
+            { pathPattern: '/master/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+            { pathPattern: '/develop/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+            { pathPattern: '/feat/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+            { isDefaultBehavior: true },
+          ],
+        },
+      ],
+    })
     // new cloudfront.CloudFrontWebDistribution(this, 'todoWebDistributionId', {
     //   originConfigs: [
     //     {
