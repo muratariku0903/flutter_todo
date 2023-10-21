@@ -8,7 +8,7 @@ const { AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_I
 const cloudfront = new CloudFront()
 
 // このLambdaはPipelineのステップの一部として呼び出されます
-export const handler = async (event: CodePipelineEvent) => {
+export const handler = async (event: CodePipelineEvent): Promise<any> => {
   console.log(event)
 
   try {
