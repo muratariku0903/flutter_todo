@@ -85,8 +85,6 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
       ),
     ])
 
-    console.log(`lambda arn ${lambdaArn}`)
-
     // codebuildプロジェクトを作成
     const codebuildProjectName = await createCodeBuildProject(branchName)
 
@@ -166,7 +164,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             name: 'InvalidateCache',
             actions: [
               {
-                name: 'InvalidateCacheAction',
+                name: 'InvalidateAction',
                 actionTypeId: {
                   category: 'Invoke',
                   owner: 'AWS',
