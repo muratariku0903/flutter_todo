@@ -14,13 +14,13 @@ const {
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY = '',
   AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY = '',
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY = '',
+  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY = '',
   AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '',
   OWNER_NAME = '',
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
 import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
-import { AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY } from '../lib/const'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -53,6 +53,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 }
 
 // TODO すでにPipelineが存在していたら削除して作り直してるけど、トランザクションは大丈夫？削除だけ成功してPipeline構築が失敗するケースとか
+// また処理が途中で落ちた場合、Pipelineだけ消滅してしまう。。。
 const createPipeline = async (branchName: string, overwriting: boolean = true): Promise<void> => {
   console.log(`start ${createPipeline.name}:${branchName}`)
 
