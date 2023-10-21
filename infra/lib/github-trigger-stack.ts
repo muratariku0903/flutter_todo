@@ -167,23 +167,14 @@ export class GithubTriggerStack extends cdk.Stack {
     invalidateCloudFrontCacheLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: [
-          'codepipeline:ListPipelines',
-          'cloudformation:DescribeStacks',
-          'cloudformation:ListStacks',
-          'codepipeline:CreatePipeline',
-          'codepipeline:DeletePipeline',
-          'iam:PassRole', // Lambdaがさまざまなサービス権限を生成したPipelineに委譲するための権限
-          'ssm:GetParameter',
-          'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
-          'codebuild:CreateProject',
-          'codebuild:DeleteProject',
-          'codebuild:BatchGetProjects',
-          'secretsmanager:GetSecretValue',
-        ],
+        actions: ['cloudfront:CreateInvalidation'],
         resources: ['*'],
       })
     )
+    invalidateCloudFrontCacheLambda.addPermission('InvokedByCodePipeline', {
+      action: 'lambda:InvokeFunction',
+      principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+    })
     new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY, {
       value: invalidateCloudFrontCacheLambda.functionArn,
       exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
