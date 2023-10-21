@@ -164,7 +164,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             name: 'InvalidateCache',
             actions: [
               {
-                name: 'InvalidateAction',
+                name: 'InvalidateCacheAction',
                 actionTypeId: {
                   category: 'Invoke',
                   owner: 'AWS',
