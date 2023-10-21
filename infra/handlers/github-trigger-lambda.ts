@@ -85,6 +85,8 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
       ),
     ])
 
+    console.log(`lambda arn ${lambdaArn}`)
+
     // codebuildプロジェクトを作成
     const codebuildProjectName = await createCodeBuildProject(branchName)
 
