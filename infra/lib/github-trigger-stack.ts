@@ -26,7 +26,7 @@ export class GithubTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
+    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。 
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
