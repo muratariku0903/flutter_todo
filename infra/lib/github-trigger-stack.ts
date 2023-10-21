@@ -182,7 +182,7 @@ export class GithubTriggerStack extends cdk.Stack {
         resources: ['*'],
       })
     )
-    new cdk.CfnOutput(this, 'InvalidateCloudFrontCacheLambdaArn', {
+    new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY, {
       value: invalidateCloudFrontCacheLambda.functionArn,
       exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
     })
