@@ -10,6 +10,7 @@ const cloudfront = new CloudFront()
 // このLambdaはPipelineのステップの一部として呼び出されます
 export const handler = async (event: CodePipelineEvent): Promise<any> => {
   console.log(event)
+  console.log(event['CodePipeline.job'].data.actionConfiguration.configuration.UserParameters)
 
   try {
     // const [distributionId] = await getValueFromStackOutputByKey(
@@ -29,6 +30,11 @@ export const handler = async (event: CodePipelineEvent): Promise<any> => {
     // await cloudfront.createInvalidation(params).promise()
     // console.log(`Invalidate cloudfront cache : ${branchName}`)
     console.log('hello')
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: 'invalidate cloudfront cache.' }),
+    }
   } catch (e) {
     console.log(e)
     return {

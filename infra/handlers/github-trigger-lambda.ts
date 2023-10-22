@@ -71,7 +71,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, lambdaArn] = await Promise.all([
+    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, lambdaName] = await Promise.all([
       getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
       getValueFromStackOutputByKey(
         AWS_GITHUB_TRIGGER_STACK_NAME,
@@ -172,7 +172,8 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   version: '1',
                 },
                 configuration: {
-                  FunctionName: lambdaArn,
+                  FunctionName: lambdaName,
+                  UserParameters: branchName,
                 },
               },
             ],
