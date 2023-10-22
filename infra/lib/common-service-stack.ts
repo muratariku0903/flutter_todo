@@ -34,7 +34,7 @@ export class CommonServiceStack extends cdk.Stack {
           behaviors: [
             { pathPattern: '/master/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
             { pathPattern: '/develop/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
-            { pathPattern: '/feat/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
+            { pathPattern: '/feat-*/*', isDefaultBehavior: false, defaultTtl: cdk.Duration.days(1) },
             { isDefaultBehavior: true },
           ],
         },
