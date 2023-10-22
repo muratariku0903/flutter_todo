@@ -167,7 +167,13 @@ export class GithubTriggerStack extends cdk.Stack {
     invalidateCloudFrontCacheLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['cloudfront:CreateInvalidation'],
+        actions: [
+          'cloudformation:DescribeStacks',
+          'cloudfront:CreateInvalidation',
+          // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
+          'codepipeline:PutJobSuccessResult',
+          'codepipeline:PutJobFailureResult',
+        ],
         resources: ['*'],
       })
     )
@@ -177,7 +183,7 @@ export class GithubTriggerStack extends cdk.Stack {
     })
     new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY, {
       value: invalidateCloudFrontCacheLambda.functionName,
-      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
+      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
     })
   }
 }

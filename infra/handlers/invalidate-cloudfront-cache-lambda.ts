@@ -2,15 +2,19 @@ import { CloudFront } from 'aws-sdk'
 import { getValueFromStackOutputByKey } from './common'
 import { CreateInvalidationRequest } from 'aws-sdk/clients/cloudfront'
 import { CodePipelineEvent } from 'aws-lambda'
+import { CodePipeline } from 'aws-sdk'
 
 const { AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY = '' } = process.env
 
+const codepipeline = new CodePipeline()
 const cloudfront = new CloudFront()
 
 // このLambdaはPipelineのステップの一部として呼び出されます
-export const handler = async (event: CodePipelineEvent): Promise<any> => {
+export const handler = async (event: CodePipelineEvent): Promise<void> => {
+  const jobId = event['CodePipeline.job'].id
+  const branchName = event['CodePipeline.job'].data.actionConfiguration.configuration.UserParameters
+
   try {
-    const branchName = event['CodePipeline.job'].data.actionConfiguration.configuration.UserParameters
     console.log(`branchName: ${branchName}`)
 
     const [distributionId] = await getValueFromStackOutputByKey(
@@ -32,15 +36,12 @@ export const handler = async (event: CodePipelineEvent): Promise<any> => {
     await cloudfront.createInvalidation(params).promise()
     console.log(`Invalidate cloudfront cache : ${branchName}`)
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'invalidate cloudfront cache.' }),
-    }
+    // 完了をPipelineに通知
+    await codepipeline.putJobSuccessResult({ jobId }).promise()
   } catch (e) {
+    await codepipeline
+      .putJobFailureResult({ jobId, failureDetails: { message: JSON.stringify(e), type: 'JobFailed' } })
+      .promise()
     console.log(e)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'internal server error.' }),
-    }
   }
 }
