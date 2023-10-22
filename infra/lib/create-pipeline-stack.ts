@@ -110,13 +110,13 @@
 
 //     // deploy flutter build file
 //     // using lambda function, upload artifact file stored in /build/web to s3 each branch
-//     new s3deploy.BucketDeployment(this, 'todoDeployId', {
-//       sources: [s3deploy.Source.asset('../build/web')],
-//       //
-//       destinationBucket: bucket,
-//       distribution: distribution,
-//       destinationKeyPrefix: branchName,
-//       distributionPaths: [`/${branchName}/*`],
-//     })
+//     // new s3deploy.BucketDeployment(this, 'todoDeployId', {
+//     //   sources: [s3deploy.Source.asset('../build/web')],
+//     //   //
+//     //   destinationBucket: bucket,
+//     //   distribution: distribution,
+//     //   destinationKeyPrefix: branchName,
+//     //   distributionPaths: [`/${branchName}/*`],
+//     // })
 //   }
 // }

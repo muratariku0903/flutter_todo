@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
-import { CloudFormation, SSM, CodeBuild, SecretsManager, CodePipeline } from 'aws-sdk'
+import { CodeBuild, CodePipeline } from 'aws-sdk'
 import {
   CodePipelineClient,
   CreatePipelineCommand,
@@ -14,19 +14,20 @@ const {
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY = '',
   AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY = '',
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY = '',
+  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY = '',
   AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '',
   OWNER_NAME = '',
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
+import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
-const cloudformation = new CloudFormation()
-const ssm = new SSM()
 const codebuild = new CodeBuild()
-const secretsManager = new SecretsManager()
 const codepipeline = new CodePipeline()
 
+// githubへのプッシュごとに毎回実行されるから毎回ブランチごとにPipelineが生成される
+// 単純に、Pipelineを作らずに、ソースコードを取得して、ビルドしてS3にデプロイすればいいだけじゃないの？
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     let body = JSON.parse(event.body ?? '{}')
@@ -52,6 +53,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 }
 
 // TODO すでにPipelineが存在していたら削除して作り直してるけど、トランザクションは大丈夫？削除だけ成功してPipeline構築が失敗するケースとか
+// また処理が途中で落ちた場合、Pipelineだけ消滅してしまう。。。
 const createPipeline = async (branchName: string, overwriting: boolean = true): Promise<void> => {
   console.log(`start ${createPipeline.name}:${branchName}`)
 
@@ -69,7 +71,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName] = await Promise.all([
+    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, lambdaArn] = await Promise.all([
       getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
       getValueFromStackOutputByKey(
         AWS_GITHUB_TRIGGER_STACK_NAME,
@@ -77,6 +79,10 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
       ),
       getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY),
       getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
+      getValueFromStackOutputByKey(
+        AWS_GITHUB_TRIGGER_STACK_NAME,
+        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY
+      ),
     ])
 
     // codebuildプロジェクトを作成
@@ -154,6 +160,23 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
               },
             ],
           },
+          {
+            name: 'InvalidateCache',
+            actions: [
+              {
+                name: 'InvalidateCacheAction',
+                actionTypeId: {
+                  category: 'Invoke',
+                  owner: 'AWS',
+                  provider: 'Lambda',
+                  version: '1',
+                },
+                configuration: {
+                  FunctionName: lambdaArn,
+                },
+              },
+            ],
+          },
         ],
       },
     }
@@ -202,6 +225,8 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
         type: 'LINUX_CONTAINER',
         computeType: 'BUILD_GENERAL1_SMALL',
         image: 'aws/codebuild/standard:5.0',
+        // build時に参照する環境変数をセット
+        environmentVariables: [{ name: 'BRANCH_NAME', value: branchName, type: 'PLAINTEXT' }],
       },
       serviceRole: roleArn,
     }
@@ -215,85 +240,5 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
     throw e
   } finally {
     console.log(`end ${createCodeBuildProject.name}`)
-  }
-}
-
-const getValueFromParameterStore = async (key: string): Promise<string> => {
-  console.log(`start ${getValueFromParameterStore.name} key: ${key}`)
-
-  try {
-    const res = await ssm.getParameter({ Name: key, WithDecryption: true }).promise()
-    console.log(`value : ${res.Parameter?.Value}`)
-
-    const value = res.Parameter?.Value
-    if (!value) {
-      throw new Error(`fail fetch value from parameter store key: ${key}`)
-    }
-
-    return value
-  } catch (e) {
-    console.log(e)
-    throw e
-  } finally {
-    console.log(`end ${getValueFromParameterStore.name}`)
-  }
-}
-
-const getValueFromStackOutputByKey = async (stackName: string, key: string): Promise<string> => {
-  console.log(`start ${getValueFromStackOutputByKey.name} stackName: ${stackName} key: ${key}`)
-
-  try {
-    const exportedOutputKey = key
-    const stack = await cloudformation.describeStacks({ StackName: stackName }).promise()
-
-    if (!stack || stack.Stacks?.length === 0 || !stack!.Stacks![0].Outputs) {
-      throw new Error(`undefined stack outputs key: ${key}`)
-    }
-
-    const outputs = stack.Stacks![0].Outputs
-    console.log(`outputs: ${outputs}`)
-    const output = outputs.find((o) => o.OutputKey === exportedOutputKey)
-    if (!output) {
-      throw new Error(`undefined stack output key: ${key}`)
-    }
-
-    const value = output.OutputValue
-    console.log(`output value : ${value}`)
-
-    if (!value) {
-      throw new Error(`undefined value from output key: ${key}`)
-    }
-
-    return value
-  } catch (e) {
-    console.log(e)
-    throw e
-  } finally {
-    console.log(`end ${getValueFromStackOutputByKey.name}`)
-  }
-}
-
-const getValueFromSecretManager = async (secretName: string, keyName: string): Promise<string> => {
-  console.log(`start ${getValueFromSecretManager.name} secretName: ${secretName} keyName: ${keyName}`)
-
-  try {
-    const res = await secretsManager.getSecretValue({ SecretId: secretName }).promise()
-    if (!res || !res.SecretString) {
-      throw new Error('undefined Secret data')
-    }
-
-    const value = JSON.parse(res.SecretString)[keyName] as string
-    if (!value) {
-      throw new Error(`undefined Secret data secretName: ${secretName}, keyName: ${keyName}`)
-    }
-
-    console.log(`secret value: ${value}`)
-
-    return value
-  } catch (e) {
-    console.log(e)
-    throw e
-  } finally {
-    console.log(`end ${getValueFromSecretManager.name}`)
   }
 }

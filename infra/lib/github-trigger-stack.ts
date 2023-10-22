@@ -5,17 +5,28 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import path = require('path')
+import {
+  AWS_GITHUB_TRIGGER_STACK_NAME,
+  AWS_COMMON_SERVICE_STACK_NAME,
+  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
+  AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
+  AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+  AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
+  AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY,
+  OWNER_NAME,
+  REPOSITORY_NAME,
+  SECRET_GITHUB_TOKEN_NAME,
+  SECRET_GITHUB_TOKEN_KEY,
+  GITHUB_CONNECTION_ARN_SSM_KEY,
+  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+} from './const'
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
 export class GithubTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const pipelineRoleArnKey = 'exportGithubTriggerPipelineRoleArn'
-    const codebuildRoleArnKey = 'exportGithubTriggerCodeBuildRoleArn'
-    const githubOwnerName = 'muratariku0903'
-    const githubRepositoryName = 'flutter_todo'
-    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
+    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。 
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
@@ -24,17 +35,18 @@ export class GithubTriggerStack extends cdk.Stack {
       memorySize: 256,
       // lambdaで使用する環境変数をセット
       environment: {
-        AWS_GITHUB_TRIGGER_STACK_NAME: 'GithubTriggerStack',
-        AWS_COMMON_SERVICE_STACK_NAME: 'CommonServiceStack',
-        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY: pipelineRoleArnKey,
-        AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY: codebuildRoleArnKey,
-        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY: 'exportGithubTriggerPipelineArtifactBucketName',
-        AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY: 'exportSourceCodeBucketName',
-        OWNER_NAME: githubOwnerName,
-        REPOSITORY_NAME: githubRepositoryName,
-        SECRET_GITHUB_TOKEN_NAME: 'github-pipeline-token',
-        SECRET_GITHUB_TOKEN_KEY: 'github-token',
-        GITHUB_CONNECTION_ARN_SSM_KEY: 'todo_github_connectionarn',
+        AWS_GITHUB_TRIGGER_STACK_NAME,
+        AWS_COMMON_SERVICE_STACK_NAME,
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
+        AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+        AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
+        OWNER_NAME,
+        REPOSITORY_NAME,
+        SECRET_GITHUB_TOKEN_NAME,
+        SECRET_GITHUB_TOKEN_KEY,
+        GITHUB_CONNECTION_ARN_SSM_KEY,
       },
     })
     githubTriggerLambda.addToRolePolicy(
@@ -46,7 +58,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'cloudformation:ListStacks',
           'codepipeline:CreatePipeline',
           'codepipeline:DeletePipeline',
-          'iam:PassRole', // Lambdaがさまざまなサービス権限を生成したPipelineに委譲するための権限
+          'iam:PassRole', // Lambdaがさまざまなサービス権限をPipelineに委譲するための権限
           'ssm:GetParameter',
           'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
           'codebuild:CreateProject',
@@ -94,7 +106,7 @@ export class GithubTriggerStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'exportGithubTriggerCodeBuildRoleArn', {
       value: codebuildRole.roleArn,
       description: 'role for codebuild triggered by github event.',
-      exportName: codebuildRoleArnKey,
+      exportName: AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
     })
 
     // pipeline用のRoleを作成してエクスポートしておく
@@ -114,6 +126,7 @@ export class GithubTriggerStack extends cdk.Stack {
         's3:DeleteObject',
         'codebuild:StartBuild',
         'codebuild:BatchGetBuilds',
+        'lambda:InvokeFunction',
       ],
       resources: ['*'], // 実際の環境では適切なリソースのARNを指定することを推奨します
     })
@@ -121,7 +134,7 @@ export class GithubTriggerStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'exportGithubTriggerPipelineRoleArn', {
       value: pipelineRole.roleArn,
       description: 'role for pipeline triggered by github event.',
-      exportName: pipelineRoleArnKey, // .envの値を参照したい
+      exportName: AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY, // .envの値を参照したい
     })
 
     // Pipelineのステージ間で共有するArtifactsを保管するS3バケットを生成してBucketネームをエクスポート
@@ -132,7 +145,39 @@ export class GithubTriggerStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'exportGithubTriggerPipelineArtifactBucketName', {
       value: artifactBucket.bucketName,
       description: 'bucket to store artifact sharing pipeline',
-      exportName: 'exportGithubTriggerPipelineArtifactBucketName', // .envの値を参照したい
+      exportName: AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY, // .envの値を参照したい
+    })
+
+    // CloudFrontにキャッシュされているコンテンツを破棄するためのLambda
+    const invalidateCloudFrontCacheLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
+      this,
+      'invalidateCloudFrontCacheLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_18_X,
+        handler: 'handler',
+        entry: path.join(__dirname, '../handlers/invalidate-cloudfront-cache-lambda.ts'),
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 256,
+        environment: {
+          AWS_COMMON_SERVICE_STACK_NAME,
+          AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY,
+        },
+      }
+    )
+    invalidateCloudFrontCacheLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['cloudfront:CreateInvalidation'],
+        resources: ['*'],
+      })
+    )
+    invalidateCloudFrontCacheLambda.addPermission('InvokedByCodePipeline', {
+      action: 'lambda:InvokeFunction',
+      principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+    })
+    new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY, {
+      value: invalidateCloudFrontCacheLambda.functionArn,
+      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
     })
   }
 }
