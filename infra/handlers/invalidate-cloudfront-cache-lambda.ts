@@ -17,7 +17,7 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
   try {
     console.log(`branchName: ${branchName}`)
 
-    const [distributionId] = await getValueFromStackOutputByKey(
+    const distributionId = await getValueFromStackOutputByKey(
       AWS_COMMON_SERVICE_STACK_NAME,
       AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY
     )
