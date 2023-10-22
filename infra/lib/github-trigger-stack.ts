@@ -18,7 +18,7 @@ import {
   SECRET_GITHUB_TOKEN_NAME,
   SECRET_GITHUB_TOKEN_KEY,
   GITHUB_CONNECTION_ARN_SSM_KEY,
-  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
 } from './const'
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
@@ -26,7 +26,7 @@ export class GithubTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。 
+    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
@@ -40,7 +40,7 @@ export class GithubTriggerStack extends cdk.Stack {
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
         AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
-        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
         AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
         OWNER_NAME,
         REPOSITORY_NAME,
@@ -175,9 +175,9 @@ export class GithubTriggerStack extends cdk.Stack {
       action: 'lambda:InvokeFunction',
       principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
     })
-    new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY, {
-      value: invalidateCloudFrontCacheLambda.functionArn,
-      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+    new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY, {
+      value: invalidateCloudFrontCacheLambda.functionName,
+      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
     })
   }
 }
