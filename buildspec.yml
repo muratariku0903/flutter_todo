@@ -13,6 +13,13 @@ phases:
 
   pre_build:
     commands:
+      - echo "Packaging Lambda(API) function..."
+      - cd api
+      - npm install
+      - zip -r api.zip .
+      - aws s3 cp api.zip s3://$BUCKET_NAME/$BRANCH_NAME/api/api.zip
+      - cd ..
+
       - echo "Fetching dependencies..."
       - flutter clean
       - flutter pub get
