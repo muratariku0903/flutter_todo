@@ -21,6 +21,7 @@ const {
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
 import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
+import { AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY } from '../lib/const'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -71,7 +72,14 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, lambdaName] = await Promise.all([
+    const [
+      roleArn,
+      artifactBucketName,
+      connectionArn,
+      sourceCodeBucketName,
+      invalidateCacheLambdaName,
+      deployApiLambdaName,
+    ] = await Promise.all([
       getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
       getValueFromStackOutputByKey(
         AWS_GITHUB_TRIGGER_STACK_NAME,
@@ -83,6 +91,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
         AWS_GITHUB_TRIGGER_STACK_NAME,
         AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
       ),
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY),
     ])
 
     // codebuildプロジェクトを作成
@@ -144,7 +153,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             name: 'Deploy',
             actions: [
               {
-                name: 'DeployAction',
+                name: 'DeploySourceAction',
                 actionTypeId: {
                   category: 'Deploy',
                   owner: 'AWS',
@@ -157,6 +166,19 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   Extract: 'true', // 元ファイルであるアーティファクトがzipになっていた場合は自動で展開してくれる
                 },
                 inputArtifacts: [{ name: 'BuildOutput' }],
+              },
+              {
+                name: 'DeployApiAction',
+                actionTypeId: {
+                  category: 'Invoke',
+                  owner: 'AWS',
+                  provider: 'Lambda',
+                  version: '1',
+                },
+                configuration: {
+                  FunctionName: deployApiLambdaName,
+                  UserParameters: branchName,
+                },
               },
             ],
           },
@@ -172,7 +194,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   version: '1',
                 },
                 configuration: {
-                  FunctionName: lambdaName,
+                  FunctionName: invalidateCacheLambdaName,
                   UserParameters: branchName,
                 },
               },

@@ -19,6 +19,7 @@ import {
   SECRET_GITHUB_TOKEN_KEY,
   GITHUB_CONNECTION_ARN_SSM_KEY,
   AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
+  AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY,
 } from './const'
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
@@ -148,6 +149,38 @@ export class GithubTriggerStack extends cdk.Stack {
       exportName: AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY, // .envの値を参照したい
     })
 
+    // APIを作成するためのLambda
+    const deployApiLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'deployApiLambda', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../handlers/deploy-api-lambda.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      environment: {
+        AWS_COMMON_SERVICE_STACK_NAME,
+        AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY,
+      },
+    })
+    deployApiLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
+          'codepipeline:PutJobSuccessResult',
+          'codepipeline:PutJobFailureResult',
+        ],
+        resources: ['*'],
+      })
+    )
+    deployApiLambda.addPermission('InvokedByCodePipelineForDeployApiLambda', {
+      action: 'lambda:InvokeFunction',
+      principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+    })
+    new cdk.CfnOutput(this, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY, {
+      value: deployApiLambda.functionName,
+      exportName: AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY,
+    })
+
     // CloudFrontにキャッシュされているコンテンツを破棄するためのLambda
     const invalidateCloudFrontCacheLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
       this,
@@ -177,7 +210,7 @@ export class GithubTriggerStack extends cdk.Stack {
         resources: ['*'],
       })
     )
-    invalidateCloudFrontCacheLambda.addPermission('InvokedByCodePipeline', {
+    invalidateCloudFrontCacheLambda.addPermission('InvokedByCodePipelineForInvalidateCacheLambda', {
       action: 'lambda:InvokeFunction',
       principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
     })
