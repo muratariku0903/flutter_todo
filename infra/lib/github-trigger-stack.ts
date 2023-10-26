@@ -165,6 +165,10 @@ export class GithubTriggerStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
+          's3:ListBucket',
+          's3:GetBucketLocation',
+          's3:PutObject',
+          's3:GetObject',
           // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
           'codepipeline:PutJobSuccessResult',
           'codepipeline:PutJobFailureResult',

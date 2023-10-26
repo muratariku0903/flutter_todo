@@ -177,7 +177,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                 },
                 configuration: {
                   FunctionName: deployApiLambdaName,
-                  UserParameters: branchName,
+                  UserParameters: JSON.stringify({ branchName: branchName, bucketName: sourceCodeBucketName }),
                 },
               },
             ],

@@ -1,21 +1,34 @@
-import { CloudFront } from 'aws-sdk'
-import { getValueFromStackOutputByKey } from './common'
-import { CreateInvalidationRequest } from 'aws-sdk/clients/cloudfront'
+import { S3, Lambda } from 'aws-sdk'
 import { CodePipelineEvent } from 'aws-lambda'
 import { CodePipeline } from 'aws-sdk'
-
-const { AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY = '' } = process.env
+import AdmZip from 'adm-zip'
 
 const codepipeline = new CodePipeline()
-const cloudfront = new CloudFront()
+const s3 = new S3()
+const lambda = new Lambda()
 
 // このLambdaはPipelineのステップの一部として呼び出されます
 export const handler = async (event: CodePipelineEvent): Promise<void> => {
   const jobId = event['CodePipeline.job'].id
-  const branchName = event['CodePipeline.job'].data.actionConfiguration.configuration.UserParameters
+  const { branchName, bucketName } = JSON.parse(
+    event['CodePipeline.job'].data.actionConfiguration.configuration.UserParameters
+  )
 
   try {
     console.log(`branchName: ${branchName}`)
+
+    const zipFile = await s3.getObject({ Bucket: bucketName, Key: `${branchName}/api/api.zip` }).promise()
+    console.log(zipFile)
+
+    const zip = new AdmZip(zipFile.Body as Buffer)
+    zip.getEntries().forEach(async (entry) => {
+      console.log(entry)
+      if (entry.name.endsWith('js')) {
+        const handlerName = `${entry.name.replace('.js', '')}.handler`
+        console.log(handlerName)
+        console.log(entry.getData())
+      }
+    })
 
     // const distributionId = await getValueFromStackOutputByKey(
     //   AWS_COMMON_SERVICE_STACK_NAME,
