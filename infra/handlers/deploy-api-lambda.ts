@@ -1,7 +1,9 @@
 import { S3, Lambda } from 'aws-sdk'
 import { CodePipelineEvent } from 'aws-lambda'
 import { CodePipeline } from 'aws-sdk'
-import AdmZip from 'adm-zip'
+// import type AdmZipType from 'adm-zip'
+// const AdmZip: AdmZipType = require('adm-zip')
+import AdmZip = require('adm-zip')
 
 const codepipeline = new CodePipeline()
 const s3 = new S3()
@@ -21,6 +23,7 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
     console.log(zipFile)
 
     const zip = new AdmZip(zipFile.Body as Buffer)
+
     zip.getEntries().forEach(async (entry) => {
       console.log(entry)
       if (entry.name.endsWith('js')) {
