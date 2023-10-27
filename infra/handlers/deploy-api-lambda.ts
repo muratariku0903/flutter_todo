@@ -1,4 +1,4 @@
-import { S3, Lambda } from 'aws-sdk'
+import { S3, Lambda, AWSError } from 'aws-sdk'
 import { CodePipelineEvent } from 'aws-lambda'
 import { CodePipeline } from 'aws-sdk'
 import AdmZip = require('adm-zip')
@@ -23,13 +23,13 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
 
     const zip = new AdmZip(zipFile.Body as Buffer)
 
-    console.log(zip.getEntries.length)
+    console.log(zip.getEntries().length)
     zip.getEntries().forEach(async (entry) => {
       console.log(entry)
       console.log(entry.name)
       console.log(entry.entryName)
-      if (entry.name.endsWith('js')) {
-        const handlerName = `${entry.name.replace('.js', '')}.handler`
+      if (entry.name.endsWith('ts')) {
+        const handlerName = `${entry.name.replace('.ts', '')}.handler`
         console.log(handlerName)
         console.log(entry.getData())
       }
@@ -63,3 +63,14 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
     console.log(e)
   }
 }
+
+// const createLambdaFunction = async (
+//   functionName: string,
+//   buffer: Buffer
+// ): Promise<> => {
+//   const params = {}
+
+//   const lambdaFunction = await lambda.createFunction(params).promise()
+
+//   return lambdaFunction.FunctionName
+// }
