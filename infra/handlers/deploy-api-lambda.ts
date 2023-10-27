@@ -1,8 +1,6 @@
 import { S3, Lambda } from 'aws-sdk'
 import { CodePipelineEvent } from 'aws-lambda'
 import { CodePipeline } from 'aws-sdk'
-// import type AdmZipType from 'adm-zip'
-// const AdmZip: AdmZipType = require('adm-zip')
 import AdmZip = require('adm-zip')
 
 const codepipeline = new CodePipeline()
@@ -19,13 +17,17 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
   try {
     console.log(`branchName: ${branchName}`)
 
+    // 問題なのはS3のデータがパブリックアクセスが許可されているこおと。ベストなのはこのdeploy-api-lambdaからしかアクセスさせたくない
     const zipFile = await s3.getObject({ Bucket: bucketName, Key: `${branchName}/api/api.zip` }).promise()
     console.log(zipFile)
 
     const zip = new AdmZip(zipFile.Body as Buffer)
 
+    console.log(zip.getEntries.length)
     zip.getEntries().forEach(async (entry) => {
       console.log(entry)
+      console.log(entry.name)
+      console.log(entry.entryName)
       if (entry.name.endsWith('js')) {
         const handlerName = `${entry.name.replace('.js', '')}.handler`
         console.log(handlerName)
