@@ -1,4 +1,4 @@
-import { S3, Lambda, AWSError } from 'aws-sdk'
+import { S3, Lambda } from 'aws-sdk'
 import { CodePipelineEvent } from 'aws-lambda'
 import { CodePipeline } from 'aws-sdk'
 import AdmZip = require('adm-zip')
@@ -19,21 +19,27 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
 
     // 問題なのはS3のデータがパブリックアクセスが許可されているこおと。ベストなのはこのdeploy-api-lambdaからしかアクセスさせたくない
     const zipFile = await s3.getObject({ Bucket: bucketName, Key: `${branchName}/api/api.zip` }).promise()
-    console.log(zipFile)
-
     const zip = new AdmZip(zipFile.Body as Buffer)
+    const configs = getConfigsFromZipFile(zip)
+    if (!configs) {
+      throw new Error('not found configs of api')
+    }
 
-    console.log(zip.getEntries().length)
-    zip.getEntries().forEach(async (entry) => {
-      console.log(entry)
-      console.log(entry.name)
-      console.log(entry.entryName)
-      if (entry.name.endsWith('ts')) {
-        const handlerName = `${entry.name.replace('.ts', '')}.handler`
-        console.log(handlerName)
-        console.log(entry.getData())
-      }
-    })
+    for (const config of configs) {
+      console.log(config)
+    }
+
+    // console.log(zip.getEntries().length)
+    // zip.getEntries().forEach(async (entry) => {
+    //   console.log(entry)
+    //   console.log(entry.name)
+    //   console.log(entry.entryName)
+    //   if (entry.name.endsWith('ts')) {
+    //     const handlerName = `${entry.name.replace('.ts', '')}.handler`
+    //     console.log(handlerName)
+    //     console.log(entry.getData())
+    //   }
+    // })
 
     // const distributionId = await getValueFromStackOutputByKey(
     //   AWS_COMMON_SERVICE_STACK_NAME,
@@ -64,11 +70,30 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
   }
 }
 
-// const createLambdaFunction = async (
-//   functionName: string,
-//   buffer: Buffer
-// ): Promise<> => {
-//   const params = {}
+type APIConfigData = {
+  functionName: string
+  handlerName: string
+  roles: string[]
+}
+
+const getConfigsFromZipFile = (zipFile: AdmZip, target: string = 'config.json'): APIConfigData[] | null => {
+  const buffer = zipFile
+    .getEntries()
+    .filter((value) => value.name === target)[0]
+    ?.getData()
+  if (!buffer) return null
+
+  return JSON.parse(buffer.toString('utf-8'))
+}
+
+// const createLambdaFunction = async (functionName: string, buffer: Buffer): Promise<> => {
+//   const params: Lambda.CreateFunctionRequest = {
+//     Code: {},
+//     FunctionName: '',
+//     Handler: 'index.handler',
+//     Role: '',
+//     Runtime:
+//   }
 
 //   const lambdaFunction = await lambda.createFunction(params).promise()
 

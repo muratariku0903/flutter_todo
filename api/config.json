@@ -1,0 +1,12 @@
+[
+  {
+    "functionName": "sampleApi1",
+    "handler": "sampleApi1.handler",
+    "roles": []
+  },
+  {
+    "functionName": "sampleApi1",
+    "handler": "sampleApi1.handler",
+    "roles": []
+  }
+]
