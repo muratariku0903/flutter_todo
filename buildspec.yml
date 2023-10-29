@@ -30,8 +30,8 @@ phases:
 
   build:
     commands:
-      - echo "Building for web..."
-      - flutter build web --base-href /`echo $BRANCH_NAME`/
+      # - echo "Building for web..."
+      # - flutter build web --base-href /`echo $BRANCH_NAME`/
 
 artifacts:
   files:
