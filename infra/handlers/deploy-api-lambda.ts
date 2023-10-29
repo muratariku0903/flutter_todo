@@ -1,14 +1,14 @@
-import { S3, Lambda, APIGateway } from 'aws-sdk'
+import { S3, Lambda, APIGateway, IAM } from 'aws-sdk'
 import { CodePipelineEvent } from 'aws-lambda'
 import { CodePipeline } from 'aws-sdk'
 import AdmZip = require('adm-zip')
-import { Runtime } from 'aws-cdk-lib/aws-lambda'
 const { AWS_REGION } = process.env
 
 const codepipeline = new CodePipeline()
 const s3 = new S3()
 const lambda = new Lambda()
 const apigateway = new APIGateway({ region: AWS_REGION })
+const iam = new IAM()
 
 // このLambdaはPipelineのステップの一部として呼び出されます
 export const handler = async (event: CodePipelineEvent): Promise<void> => {
@@ -69,21 +69,25 @@ const createLambdaFunctions = async (
   console.log(`start ${createLambdaFunctions.name}`)
 
   try {
-    const lambdaCreatePromises = configs.map((config) =>
-      lambda
+    const lambdaCreatePromises = configs.map(async (config) => {
+      const functionName = `${config.functionName}-${branchName}`
+      // 作成されるlambda用の権限を作成
+      const roleArn = await createRoleForLambda(functionName, config.roles)
+
+      return lambda
         .createFunction({
           Code: {
             S3Bucket: bucketName,
             S3Key: zipKey,
           },
           PackageType: 'Zip',
-          FunctionName: `${config.functionName}-${branchName}`,
+          FunctionName: functionName,
           Handler: config.handlerName,
-          Role: 'arn:aws:iam::262115391162:role/service-role/aws-codestar-service-role',
+          Role: roleArn,
           Runtime: 'nodejs18.x',
         })
         .promise()
-    )
+    })
 
     return await Promise.all(lambdaCreatePromises)
   } catch (error) {
@@ -91,6 +95,50 @@ const createLambdaFunctions = async (
     throw error
   } finally {
     console.log(`end ${createLambdaFunctions.name}`)
+  }
+}
+
+const createRoleForLambda = async (functionName: string, roleArns: string[]): Promise<string> => {
+  console.log(`start ${createRoleForLambda.name}`)
+
+  // lambdaに対する信頼ポリシー
+  const trustPolicy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: {
+          Service: 'lambda.amazonaws.com',
+        },
+        Action: 'sts:AssumeRole',
+      },
+    ],
+  }
+
+  const params = {
+    AssumeRolePolicyDocument: JSON.stringify(trustPolicy),
+    RoleName: `roleFor${functionName}`,
+  }
+
+  try {
+    const role = (await iam.createRole(params).promise()).Role
+    const promises = roleArns.map((arn) => {
+      console.log(role.RoleName)
+      console.log(arn)
+
+      iam.attachRolePolicy({
+        RoleName: role.RoleName,
+        PolicyArn: arn,
+      })
+    })
+    await Promise.all(promises)
+
+    return role.Arn
+  } catch (e) {
+    console.log(`error at ${createRoleForLambda.name} error: ${e}`)
+    throw e
+  } finally {
+    console.log(`end ${createRoleForLambda.name}`)
   }
 }
 
