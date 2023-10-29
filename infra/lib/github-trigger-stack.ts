@@ -170,6 +170,7 @@ export class GithubTriggerStack extends cdk.Stack {
           's3:PutObject',
           's3:GetObject',
           'lambda:CreateFunction',
+          'iam:PassRole',
           // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
           'codepipeline:PutJobSuccessResult',
           'codepipeline:PutJobFailureResult',
