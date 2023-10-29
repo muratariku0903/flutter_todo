@@ -156,10 +156,10 @@ export class GithubTriggerStack extends cdk.Stack {
       entry: path.join(__dirname, '../handlers/deploy-api-lambda.ts'),
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
-      environment: {
-        AWS_COMMON_SERVICE_STACK_NAME,
-        AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY,
-      },
+      // environment: {
+      //   AWS_COMMON_SERVICE_STACK_NAME,
+      //   AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY,
+      // },
     })
     deployApiLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -169,6 +169,7 @@ export class GithubTriggerStack extends cdk.Stack {
           's3:GetBucketLocation',
           's3:PutObject',
           's3:GetObject',
+          'lambda:CreateFunction',
           // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
           'codepipeline:PutJobSuccessResult',
           'codepipeline:PutJobFailureResult',

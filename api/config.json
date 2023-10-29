@@ -2,11 +2,13 @@
   {
     "functionName": "sampleApi1",
     "handler": "sampleApi1.handler",
+    "method": "GET",
     "roles": []
   },
   {
-    "functionName": "sampleApi1",
-    "handler": "sampleApi1.handler",
+    "functionName": "sampleApi2",
+    "handler": "sampleApi2.handler",
+    "method": "POST",
     "roles": []
   }
 ]
