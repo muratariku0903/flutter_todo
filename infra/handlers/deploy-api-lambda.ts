@@ -76,10 +76,11 @@ const createLambdaFunctions = async (
             S3Bucket: bucketName,
             S3Key: zipKey,
           },
+          PackageType: 'Zip',
           FunctionName: `${config.functionName}-${branchName}`,
           Handler: config.handlerName,
           Role: 'arn:aws:iam::262115391162:role/service-role/aws-codestar-service-role',
-          Runtime: Runtime.NODEJS_18_X.name,
+          Runtime: 'nodejs18.x',
         })
         .promise()
     )
@@ -93,6 +94,7 @@ const createLambdaFunctions = async (
   }
 }
 
+// TODO 既に同名のAPIが存在していたらどうなる？
 const createApiGatewaysFromLambdas = async (
   lambdaConfigs: Lambda.FunctionConfiguration[],
   configs: APIConfigData[]
