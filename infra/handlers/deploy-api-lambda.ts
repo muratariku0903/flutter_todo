@@ -128,10 +128,12 @@ const createRoleForLambda = async (functionName: string, roleArns: string[]): Pr
       console.log(role.RoleName)
       console.log(arn)
 
-      iam.attachRolePolicy({
-        RoleName: role.RoleName,
-        PolicyArn: arn,
-      })
+      return iam
+        .attachRolePolicy({
+          RoleName: role.RoleName,
+          PolicyArn: arn,
+        })
+        .promise()
     })
     await Promise.all(promises)
     console.log('success attach policies to created role')
