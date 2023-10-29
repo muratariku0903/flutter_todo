@@ -73,6 +73,7 @@ const createLambdaFunctions = async (
       const functionName = `${config.functionName}-${branchName}`
       // 作成されるlambda用の権限を作成
       const roleArn = await createRoleForLambda(functionName, config.roles)
+      console.log(`roleArn ${roleArn}`)
 
       return lambda
         .createFunction({
@@ -122,6 +123,7 @@ const createRoleForLambda = async (functionName: string, roleArns: string[]): Pr
 
   try {
     const role = (await iam.createRole(params).promise()).Role
+    console.log(`created role ${role.RoleName} ${role.Arn}`)
     const promises = roleArns.map((arn) => {
       console.log(role.RoleName)
       console.log(arn)
@@ -132,6 +134,7 @@ const createRoleForLambda = async (functionName: string, roleArns: string[]): Pr
       })
     })
     await Promise.all(promises)
+    console.log('success attach policies to created role')
 
     return role.Arn
   } catch (e) {
