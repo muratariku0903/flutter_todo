@@ -116,18 +116,31 @@ const createRoleForLambda = async (functionName: string, roleArns: string[]): Pr
     ],
   }
 
+  const roleName = `roleFor${functionName}`
   const params = {
     AssumeRolePolicyDocument: JSON.stringify(trustPolicy),
-    RoleName: `roleFor${functionName}`,
+    RoleName: roleName,
   }
 
   try {
-    const role = (await iam.createRole(params).promise()).Role
-    console.log(`created role ${role.RoleName} ${role.Arn}`)
-    const promises = roleArns.map((arn) => {
-      console.log(role.RoleName)
-      console.log(arn)
+    let role: IAM.Role
 
+    const existRole = await checkExistRole(roleName)
+    // Roleが既に存在していたらポリシー全て外す
+    if (existRole) {
+      const policies = await iam.listAttachedRolePolicies({ RoleName: roleName }).promise()
+      const promises = policies.AttachedPolicies?.map((policy) =>
+        iam.detachRolePolicy({ RoleName: roleName, PolicyArn: policy.PolicyArn ?? '' }).promise()
+      )
+      await Promise.all(promises ?? [])
+
+      role = existRole
+    } else {
+      role = (await iam.createRole(params).promise()).Role
+    }
+
+    console.log(`attach policy to role ${role.RoleName} ${role.Arn}`)
+    const promises = roleArns.map((arn) => {
       return iam
         .attachRolePolicy({
           RoleName: role.RoleName,
@@ -200,6 +213,22 @@ const createApiGatewaysFromLambdas = async (
     throw error
   } finally {
     console.log(`end ${createApiGatewaysFromLambdas.name}`)
+  }
+}
+
+const checkExistRole = async (roleName: string): Promise<IAM.Role | null> => {
+  console.log(`start ${checkExistRole.name}`)
+
+  try {
+    return (await iam.getRole({ RoleName: roleName }).promise()).Role
+  } catch (error: any) {
+    console.log(`error at ${checkExistRole.name} ${error}`)
+    if ('code' in error && error.code === 'NoSuchEntity') {
+      return null
+    }
+    throw error
+  } finally {
+    console.log(`end ${checkExistRole.name}`)
   }
 }
 
