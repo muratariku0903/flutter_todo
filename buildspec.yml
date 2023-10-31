@@ -16,7 +16,8 @@ phases:
       - echo "Packaging Lambda(API) function..."
       - cd api
       - npm install
-      - zip -r api.zip .
+      - ./node_modules/.bin/tsc --outDir ./
+      - zip -r api.zip . -x "src/*"
       - aws s3 cp api.zip s3://$BUCKET_NAME/$BRANCH_NAME/api/api.zip
       - cd ..
 

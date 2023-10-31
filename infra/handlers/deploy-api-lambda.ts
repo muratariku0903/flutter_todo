@@ -35,7 +35,7 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
     // APIの設定に基づいてlambdaを作成
     const createdLambdas = await createLambdaFunctions(bucketName, objectKey, branchName, configs)
 
-    // 作成されたlambdaを元にAPI Gatewayを作成
+    // 作成されたlambdaを元にAPI Gatewayを作成 すでに同じ名前のAPI Gatewayが存在していたら削除して再度作成する
     // await createApiGatewaysFromLambdas(createdLambdas, configs)
 
     // 完了をPipelineに通知
@@ -58,7 +58,6 @@ const getConfigsFromZipFile = (zipFile: AdmZip, target: string = 'config.json'):
   return JSON.parse(buffer.toString('utf-8'))
 }
 
-// TODO 既に同名のLambdaが存在していたらどうなる？
 const createLambdaFunctions = async (
   bucketName: string,
   zipKey: string,
