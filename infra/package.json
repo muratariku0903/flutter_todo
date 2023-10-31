@@ -11,6 +11,7 @@
     "cdk": "cdk"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.3",
     "@types/aws-lambda": "^8.10.124",
     "@types/jest": "^29.5.5",
     "@types/node": "20.6.3",
@@ -22,6 +23,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-codepipeline": "^3.427.0",
+    "adm-zip": "^0.5.10",
     "aws-cdk-lib": "2.99.0",
     "aws-lambda": "^1.0.7",
     "aws-sdk": "^2.1472.0",

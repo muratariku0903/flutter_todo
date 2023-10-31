@@ -1,0 +1,14 @@
+[
+  {
+    "functionName": "sampleApi1",
+    "handlerName": "sampleApi1.handler",
+    "method": "GET",
+    "roles": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+  },
+  {
+    "functionName": "sampleApi2",
+    "handlerName": "sampleApi2.handler",
+    "method": "POST",
+    "roles": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+  }
+]

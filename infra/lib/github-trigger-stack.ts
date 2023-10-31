@@ -18,7 +18,8 @@ import {
   SECRET_GITHUB_TOKEN_NAME,
   SECRET_GITHUB_TOKEN_KEY,
   GITHUB_CONNECTION_ARN_SSM_KEY,
-  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
+  AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY,
 } from './const'
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
@@ -26,7 +27,7 @@ export class GithubTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。 
+    // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
     const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
@@ -40,7 +41,7 @@ export class GithubTriggerStack extends cdk.Stack {
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
         AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
         AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
-        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
         AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
         OWNER_NAME,
         REPOSITORY_NAME,
@@ -148,6 +149,47 @@ export class GithubTriggerStack extends cdk.Stack {
       exportName: AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY, // .envの値を参照したい
     })
 
+    // APIを作成するためのLambda
+    const deployApiLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'deployApiLambda', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../handlers/deploy-api-lambda.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    })
+    deployApiLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          's3:ListBucket',
+          's3:GetBucketLocation',
+          's3:PutObject',
+          's3:GetObject',
+          'lambda:CreateFunction',
+          'lambda:GetFunction',
+          'lambda:DeleteFunction',
+          'iam:PassRole',
+          'iam:CreateRole',
+          'iam:AttachRolePolicy',
+          'iam:DetachRolePolicy',
+          'iam:ListAttachedRolePolicies',
+          'iam:GetRole',
+          // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
+          'codepipeline:PutJobSuccessResult',
+          'codepipeline:PutJobFailureResult',
+        ],
+        resources: ['*'],
+      })
+    )
+    deployApiLambda.addPermission('InvokedByCodePipelineForDeployApiLambda', {
+      action: 'lambda:InvokeFunction',
+      principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+    })
+    new cdk.CfnOutput(this, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY, {
+      value: deployApiLambda.functionName,
+      exportName: AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY,
+    })
+
     // CloudFrontにキャッシュされているコンテンツを破棄するためのLambda
     const invalidateCloudFrontCacheLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
       this,
@@ -167,17 +209,23 @@ export class GithubTriggerStack extends cdk.Stack {
     invalidateCloudFrontCacheLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['cloudfront:CreateInvalidation'],
+        actions: [
+          'cloudformation:DescribeStacks',
+          'cloudfront:CreateInvalidation',
+          // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
+          'codepipeline:PutJobSuccessResult',
+          'codepipeline:PutJobFailureResult',
+        ],
         resources: ['*'],
       })
     )
-    invalidateCloudFrontCacheLambda.addPermission('InvokedByCodePipeline', {
+    invalidateCloudFrontCacheLambda.addPermission('InvokedByCodePipelineForInvalidateCacheLambda', {
       action: 'lambda:InvokeFunction',
       principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
     })
-    new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY, {
-      value: invalidateCloudFrontCacheLambda.functionArn,
-      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY,
+    new cdk.CfnOutput(this, AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY, {
+      value: invalidateCloudFrontCacheLambda.functionName,
+      exportName: AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
     })
   }
 }

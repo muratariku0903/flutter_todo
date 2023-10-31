@@ -14,13 +14,14 @@ const {
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY = '',
   AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY = '',
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY = '',
-  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY = '',
+  AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY = '',
   AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '',
   OWNER_NAME = '',
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
 import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
+import { AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY } from '../lib/const'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -71,7 +72,14 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, lambdaArn] = await Promise.all([
+    const [
+      roleArn,
+      artifactBucketName,
+      connectionArn,
+      sourceCodeBucketName,
+      invalidateCacheLambdaName,
+      deployApiLambdaName,
+    ] = await Promise.all([
       getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
       getValueFromStackOutputByKey(
         AWS_GITHUB_TRIGGER_STACK_NAME,
@@ -81,8 +89,9 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
       getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
       getValueFromStackOutputByKey(
         AWS_GITHUB_TRIGGER_STACK_NAME,
-        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_ARN_KEY
+        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
       ),
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY),
     ])
 
     // codebuildプロジェクトを作成
@@ -144,7 +153,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             name: 'Deploy',
             actions: [
               {
-                name: 'DeployAction',
+                name: 'DeploySourceAction',
                 actionTypeId: {
                   category: 'Deploy',
                   owner: 'AWS',
@@ -157,6 +166,19 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   Extract: 'true', // 元ファイルであるアーティファクトがzipになっていた場合は自動で展開してくれる
                 },
                 inputArtifacts: [{ name: 'BuildOutput' }],
+              },
+              {
+                name: 'DeployApiAction',
+                actionTypeId: {
+                  category: 'Invoke',
+                  owner: 'AWS',
+                  provider: 'Lambda',
+                  version: '1',
+                },
+                configuration: {
+                  FunctionName: deployApiLambdaName,
+                  UserParameters: JSON.stringify({ branchName: branchName, bucketName: sourceCodeBucketName }),
+                },
               },
             ],
           },
@@ -172,7 +194,8 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   version: '1',
                 },
                 configuration: {
-                  FunctionName: lambdaArn,
+                  FunctionName: invalidateCacheLambdaName,
+                  UserParameters: branchName,
                 },
               },
             ],
@@ -208,8 +231,9 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
     }
 
     // codebuildプロジェクトを構築するための必要なロールを取得
-    const [roleArn] = await Promise.all([
+    const [roleArn, sourceCodeBucketName] = await Promise.all([
       getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY),
+      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
     ])
 
     const params: CreateProjectInput = {
@@ -226,7 +250,10 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
         computeType: 'BUILD_GENERAL1_SMALL',
         image: 'aws/codebuild/standard:5.0',
         // build時に参照する環境変数をセット
-        environmentVariables: [{ name: 'BRANCH_NAME', value: branchName, type: 'PLAINTEXT' }],
+        environmentVariables: [
+          { name: 'BRANCH_NAME', value: branchName, type: 'PLAINTEXT' },
+          { name: 'BUCKET_NAME', value: sourceCodeBucketName, type: 'PLAINTEXT' },
+        ],
       },
       serviceRole: roleArn,
     }

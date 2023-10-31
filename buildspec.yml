@@ -3,30 +3,38 @@ version: 0.2
 phases:
   install:
     commands:
-      - echo "Installing Flutter..."
-      - git clone https://github.com/flutter/flutter.git -b stable
-      - export PATH="$PATH:`pwd`/flutter/bin"
-      - flutter precache
-      - flutter doctor
-      - node -v
-      - npm -v
+      # - echo "Installing Flutter..."
+      # - git clone https://github.com/flutter/flutter.git -b stable
+      # - export PATH="$PATH:`pwd`/flutter/bin"
+      # - flutter precache
+      # - flutter doctor
+      # - node -v
+      # - npm -v
 
   pre_build:
     commands:
-      - echo "Fetching dependencies..."
-      - flutter clean
-      - flutter pub get
-      - flutter pub run build_runner build
-
-      - echo "Installing npm packages..."
+      - echo "Packaging Lambda(API) function..."
+      - cd api
       - npm install
+      - ./node_modules/.bin/tsc --outDir ./
+      - zip -r api.zip . -x "src/*"
+      - aws s3 cp api.zip s3://$BUCKET_NAME/$BRANCH_NAME/api/api.zip
+      - cd ..
+
+      # - echo "Fetching dependencies..."
+      # - flutter clean
+      # - flutter pub get
+      # - flutter pub run build_runner build
+
+      # - echo "Installing npm packages..."
+      # - npm install
 
   build:
     commands:
-      - echo "Building for web..."
-      - flutter build web --base-href /`echo $BRANCH_NAME`/
+      # - echo "Building for web..."
+      # - flutter build web --base-href /`echo $BRANCH_NAME`/
 
-artifacts:
-  files:
-    - '**/*'
-  base-directory: 'build/web'
+# artifacts:
+#   files:
+#     - '**/*'
+#   base-directory: 'build/web'
