@@ -70,6 +70,14 @@ const createLambdaFunctions = async (
   try {
     const lambdaCreatePromises = configs.map(async (config) => {
       const functionName = `${config.functionName}-${branchName}`
+
+      const existFunction = await checkExistLambda(functionName)
+      // すでに同名のLambdaが存在していたら削除する
+      if (existFunction) {
+        console.log('delete already exist function ')
+        await lambda.deleteFunction({ FunctionName: functionName }).promise()
+      }
+
       // 作成されるlambda用の権限を作成
       const roleArn = await createRoleForLambda(functionName, config.roles)
       console.log(`roleArn ${roleArn}`)
@@ -228,6 +236,24 @@ const checkExistRole = async (roleName: string): Promise<IAM.Role | null> => {
     throw error
   } finally {
     console.log(`end ${checkExistRole.name}`)
+  }
+}
+
+const checkExistLambda = async (functionName: string): Promise<string | null> => {
+  console.log(`start ${checkExistLambda.name}`)
+
+  try {
+    await lambda.getFunction({ FunctionName: functionName }).promise()
+
+    return functionName
+  } catch (error: any) {
+    console.log(`error at ${checkExistLambda.name} ${error}`)
+    if ('code' in error && error.code === 'ResourceNotFoundException') {
+      return null
+    }
+    throw error
+  } finally {
+    console.log(`end ${checkExistLambda.name}`)
   }
 }
 

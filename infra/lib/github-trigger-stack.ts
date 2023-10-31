@@ -166,6 +166,8 @@ export class GithubTriggerStack extends cdk.Stack {
           's3:PutObject',
           's3:GetObject',
           'lambda:CreateFunction',
+          'lambda:GetFunction',
+          'lambda:DeleteFunction',
           'iam:PassRole',
           'iam:CreateRole',
           'iam:AttachRolePolicy',
