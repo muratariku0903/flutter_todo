@@ -21,7 +21,8 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
   try {
     console.log(`branchName: ${branchName}`)
 
-    // 問題なのはS3のデータがパブリックアクセスが許可されているこおと。ベストなのはこのdeploy-api-lambdaからしかアクセスさせたくない
+    // S3にZip化されているハンドラーファイルを取得
+    // 問題なのはS3のデータがパブリックアクセスが許可されていること。ベストなのはこのdeploy-api-lambdaからしかアクセスさせたくない
     const zipFile = await s3.getObject({ Bucket: bucketName, Key: objectKey }).promise()
     const zip = new AdmZip(zipFile.Body as Buffer)
 
@@ -126,7 +127,7 @@ const createRoleForLambda = async (functionName: string, roleArns: string[]): Pr
     let role: IAM.Role
 
     const existRole = await checkExistRole(roleName)
-    // Roleが既に存在していたらポリシー全て外す
+    // Roleが既に存在していたらアタッチされてるポリシー全て外す
     if (existRole) {
       const policies = await iam.listAttachedRolePolicies({ RoleName: roleName }).promise()
       const promises = policies.AttachedPolicies?.map((policy) =>

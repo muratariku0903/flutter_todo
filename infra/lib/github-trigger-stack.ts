@@ -170,6 +170,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'iam:CreateRole',
           'iam:AttachRolePolicy',
           'iam:DetachRolePolicy',
+          'iam:ListAttachedRolePolicies',
           'iam:GetRole',
           // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
           'codepipeline:PutJobSuccessResult',
