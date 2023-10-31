@@ -34,8 +34,6 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
 
     // APIの設定に基づいてlambdaを作成
     const createdLambdas = await createLambdaFunctions(bucketName, objectKey, branchName, configs)
-    console.log(createdLambdas.length)
-    console.log(createdLambdas)
 
     // 作成されたlambdaを元にAPI Gatewayを作成
     // await createApiGatewaysFromLambdas(createdLambdas, configs)
