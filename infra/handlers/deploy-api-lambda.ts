@@ -176,25 +176,33 @@ const createApiGatewaysFromLambdas = async (
   const create = async (lambdaConfig: Lambda.FunctionConfiguration) => {
     // apiを作成
     const apiParams: APIGateway.CreateRestApiRequest = {
-      name: lambdaConfig.FunctionName ?? '',
+      name: `api-${lambdaConfig.FunctionName}` ?? '',
     }
     const apiResult = await apigateway.createRestApi(apiParams).promise()
+    const apiId = apiResult.id
+    if (!apiId) {
+      throw new Error('Not found api id')
+    }
 
     const apiConfig = configs.filter((config) => config.handlerName == lambdaConfig.Handler)[0]
     console.log(`apiConfig ${apiConfig}`)
 
     // apiのリソースを作成
     const apiResourceParams: APIGateway.CreateResourceRequest = {
-      restApiId: apiResult.id ?? '',
+      restApiId: apiId,
       parentId: apiResult.rootResourceId ?? '',
       pathPart: apiConfig.functionName,
     }
     const resourceResult = await apigateway.createResource(apiResourceParams).promise()
+    const apiResourceId = resourceResult.id
+    if (!apiResourceId) {
+      throw new Error('Not found api resource id')
+    }
 
     // メソッドを作成
     const methodParams: APIGateway.PutMethodRequest = {
-      restApiId: apiResult.id ?? '',
-      resourceId: resourceResult.id ?? '',
+      restApiId: apiId,
+      resourceId: apiResourceId,
       httpMethod: apiConfig.method,
       authorizationType: 'NONE',
     }
@@ -202,11 +210,12 @@ const createApiGatewaysFromLambdas = async (
 
     // APIにリクエストが来た時にそれをLambdaに連携するための設定
     const integrationParams = {
-      restApiId: apiResult.id ?? '',
-      resourceId: resourceResult.id ?? '',
+      restApiId: apiId,
+      resourceId: apiResourceId,
       httpMethod: apiConfig.method,
       type: 'AWS_PROXY',
-      integrationHttpMethod: 'POST',
+      // API GatewayからLambda関数にリクエストを転送する際に使用されるHTTPメソッド
+      integrationHttpMethod: apiConfig.method,
       uri: lambdaConfig.FunctionArn,
     }
     await apigateway.putIntegration(integrationParams).promise()
@@ -214,6 +223,7 @@ const createApiGatewaysFromLambdas = async (
 
   try {
     await Promise.all(lambdaConfigs.map((config) => create(config)))
+    console.log('success api from lambda')
   } catch (error) {
     console.log(`error at ${createApiGatewaysFromLambdas.name} : ${error}`)
     throw error
