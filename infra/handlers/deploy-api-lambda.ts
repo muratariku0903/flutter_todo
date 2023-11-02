@@ -180,7 +180,8 @@ const createApiGatewaysFromLambdas = async (
     }
     const apiResult = await apigateway.createRestApi(apiParams).promise()
     const apiId = apiResult.id
-    if (!apiId) {
+    const apiParentId = apiResult.rootResourceId
+    if (!apiId || !apiParentId) {
       throw new Error('Not found api id')
     }
 
@@ -190,7 +191,7 @@ const createApiGatewaysFromLambdas = async (
     // apiのリソースを作成
     const apiResourceParams: APIGateway.CreateResourceRequest = {
       restApiId: apiId,
-      parentId: apiResult.rootResourceId ?? '',
+      parentId: apiParentId,
       pathPart: apiConfig.functionName,
     }
     const resourceResult = await apigateway.createResource(apiResourceParams).promise()
