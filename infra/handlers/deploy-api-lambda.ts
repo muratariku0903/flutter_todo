@@ -219,7 +219,8 @@ const createApiGatewaysFromLambdas = async (
       type: 'AWS_PROXY',
       // API GatewayからLambda関数にリクエストを転送する際に使用されるHTTPメソッド
       integrationHttpMethod: apiConfig.method,
-      uri: lambdaConfig.FunctionArn,
+      uri: `arn:aws:apigateway:${AWS_REGION}:lambda:action/${lambdaConfig.FunctionArn}`,
+      // uri: lambdaConfig.FunctionArn,
     }
     await apigateway.putIntegration(integrationParams).promise()
   }
