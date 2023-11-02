@@ -11,6 +11,7 @@ const apigateway = new APIGateway({ region: AWS_REGION })
 const iam = new IAM()
 
 // このLambdaはPipelineのステップの一部として呼び出されます
+// Lambdaは短時間で完了するタスクに適しており長時間の処理だとコストが多くかかってしまう。現状実行完了まで8秒弱かかってしまうのでもう少し処理軽くできないだろうか。
 export const handler = async (event: CodePipelineEvent): Promise<void> => {
   const jobId = event['CodePipeline.job'].id
   const { branchName, bucketName } = JSON.parse(
@@ -186,7 +187,8 @@ const createApiGatewaysFromLambdas = async (
     }
 
     const apiConfig = configs.filter((config) => config.handlerName == lambdaConfig.Handler)[0]
-    console.log(`apiConfig ${apiConfig}`)
+    console.log(`lambdaConfig ${JSON.stringify(lambdaConfig)}`)
+    console.log(`apiConfig ${JSON.stringify(apiConfig)}`)
 
     // apiのリソースを作成
     const apiResourceParams: APIGateway.CreateResourceRequest = {
