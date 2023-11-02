@@ -178,6 +178,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'apigateway:CreateResource',
           'apigateway:PutMethod',
           'apigateway:POST',
+          'apigateway:PUT',
           'apigateway:PutIntegration',
           // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
           'codepipeline:PutJobSuccessResult',
