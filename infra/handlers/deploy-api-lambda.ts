@@ -36,7 +36,7 @@ export const handler = async (event: CodePipelineEvent): Promise<void> => {
     const createdLambdas = await createLambdaFunctions(bucketName, objectKey, branchName, configs)
 
     // 作成されたlambdaを元にAPI Gatewayを作成 すでに同じ名前のAPI Gatewayが存在していたら削除して再度作成する
-    // await createApiGatewaysFromLambdas(createdLambdas, configs)
+    await createApiGatewaysFromLambdas(createdLambdas, configs)
 
     // 完了をPipelineに通知
     await codepipeline.putJobSuccessResult({ jobId }).promise()
