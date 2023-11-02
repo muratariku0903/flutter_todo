@@ -174,10 +174,10 @@ const createApiGatewaysFromLambdas = async (
   console.log(`start ${createApiGatewaysFromLambdas.name}`)
 
   const create = async (lambdaConfig: Lambda.FunctionConfiguration) => {
+    const apiName = `api-${lambdaConfig.FunctionName}`
+
     // apiを作成
-    const apiParams: APIGateway.CreateRestApiRequest = {
-      name: `api-${lambdaConfig.FunctionName}` ?? '',
-    }
+    const apiParams: APIGateway.CreateRestApiRequest = { name: apiName }
     const apiResult = await apigateway.createRestApi(apiParams).promise()
     const apiId = apiResult.id
     const apiParentId = apiResult.rootResourceId
