@@ -222,6 +222,13 @@ const createApiGatewaysFromLambdas = async (
       uri: `arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/${lambdaConfig.FunctionArn}/invocations`,
     }
     await apigateway.putIntegration(integrationParams).promise()
+
+    // 作成したAPIをデプロイする
+    const deploymentParams: APIGateway.CreateDeploymentRequest = {
+      restApiId: apiId,
+    }
+    await apigateway.createDeployment(deploymentParams).promise()
+    console.log(`success deploy api ${apiName}`)
   }
 
   try {
