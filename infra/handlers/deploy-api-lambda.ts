@@ -174,8 +174,20 @@ const createApiGatewaysFromLambdas = async (
 ): Promise<void> => {
   console.log(`start ${createApiGatewaysFromLambdas.name}`)
 
-  const create = async (lambdaConfig: Lambda.FunctionConfiguration) => {
+  const create = async (
+    lambdaConfig: Lambda.FunctionConfiguration,
+    existApis: APIGateway.ListOfRestApi | undefined
+  ) => {
     const apiName = `api-${lambdaConfig.FunctionName}`
+
+    // 既に同じ名前のAPIが存在していたら削除する
+    if (existApis) {
+      const existApi = existApis.find((api) => api.name === apiName)
+      if (existApi) {
+        console.log(`Delete exist api :${apiName}`)
+        await apigateway.deleteRestApi({ restApiId: existApi.id! }).promise()
+      }
+    }
 
     // apiを作成
     const apiParams: APIGateway.CreateRestApiRequest = { name: apiName }
@@ -232,7 +244,8 @@ const createApiGatewaysFromLambdas = async (
   }
 
   try {
-    await Promise.all(lambdaConfigs.map((config) => create(config)))
+    const existApis = await apigateway.getRestApis().promise()
+    await Promise.all(lambdaConfigs.map((config) => create(config, existApis.items)))
     console.log('success api from lambda')
   } catch (error) {
     console.log(`error at ${createApiGatewaysFromLambdas.name} : ${error}`)
