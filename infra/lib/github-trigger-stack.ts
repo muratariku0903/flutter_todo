@@ -96,7 +96,9 @@ export class GithubTriggerStack extends cdk.Stack {
         's3:PutObject',
         's3:GetObject',
         's3:DeleteObject',
+        // cdkコマンド実行するための権限
         'ssm:GetParameter',
+        'cloudformation:*',
         // codebuildがCloudWatchにログを出力する権限
         'logs:CreateLogGroup',
         'logs:CreateLogStream',
