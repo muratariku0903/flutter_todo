@@ -2,14 +2,16 @@ version: 0.2
 
 phases:
   install:
+    runtime-version:
+      nodejs: 18
     commands:
       # - echo "Installing Flutter..."
       # - git clone https://github.com/flutter/flutter.git -b stable
       # - export PATH="$PATH:`pwd`/flutter/bin"
       # - flutter precache
       # - flutter doctor
-      # - node -v
-      # - npm -v
+      - node -v
+      - npm -v
 
   pre_build:
     commands:
