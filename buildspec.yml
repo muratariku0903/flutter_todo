@@ -31,7 +31,7 @@ phases:
       - npm install
       # cdkのパスを通さないとダメじゃない？
       - cdk --version
-      - cdk deploy DeploymentStack-"/`echo $BRANCH_NAME`/" --context branchName=/`echo $BRANCH_NAME`/
+      - cdk deploy DeploymentStack-${BRANCH_NAME} --context branchName=${BRANCH_NAME}
       - cd ..
 
       # - echo "Building for web..."
