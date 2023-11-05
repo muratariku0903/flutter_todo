@@ -99,6 +99,7 @@ export class GithubTriggerStack extends cdk.Stack {
         // cdkコマンド実行するための権限
         'ssm:GetParameter',
         'cloudformation:*',
+        'iam:PassRole',
         // codebuildがCloudWatchにログを出力する権限
         'logs:CreateLogGroup',
         'logs:CreateLogStream',
