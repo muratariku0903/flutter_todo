@@ -32,7 +32,7 @@ phases:
       # cdkのパスを通さないとダメじゃない？
       - cdk --version
       - cdk list
-      - cdk deploy DeploymentsStack-${BRANCH_NAME} --context branchName=${BRANCH_NAME}
+      - cdk deploy DeploymentsStack-${BRANCH_NAME} --require-approval never --context branchName=${BRANCH_NAME}
       - cd ..
 
       # - echo "Building for web..."

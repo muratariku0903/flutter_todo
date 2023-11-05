@@ -21,7 +21,6 @@ const {
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
 import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
-import { AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY } from '../lib/const'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -72,27 +71,20 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [
-      roleArn,
-      artifactBucketName,
-      connectionArn,
-      sourceCodeBucketName,
-      invalidateCacheLambdaName,
-      deployApiLambdaName,
-    ] = await Promise.all([
-      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
-      getValueFromStackOutputByKey(
-        AWS_GITHUB_TRIGGER_STACK_NAME,
-        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY
-      ),
-      getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY),
-      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
-      getValueFromStackOutputByKey(
-        AWS_GITHUB_TRIGGER_STACK_NAME,
-        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
-      ),
-      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY),
-    ])
+    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, invalidateCacheLambdaName] =
+      await Promise.all([
+        getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
+        getValueFromStackOutputByKey(
+          AWS_GITHUB_TRIGGER_STACK_NAME,
+          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY
+        ),
+        getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY),
+        getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
+        getValueFromStackOutputByKey(
+          AWS_GITHUB_TRIGGER_STACK_NAME,
+          AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
+        ),
+      ])
 
     // codebuildプロジェクトを作成
     const codebuildProjectName = await createCodeBuildProject(branchName)
@@ -169,19 +161,6 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                 },
                 inputArtifacts: [{ name: 'BuildOutput' }],
               },
-              // {
-              //   name: 'DeployApiAction',
-              //   actionTypeId: {
-              //     category: 'Invoke',
-              //     owner: 'AWS',
-              //     provider: 'Lambda',
-              //     version: '1',
-              //   },
-              //   configuration: {
-              //     FunctionName: deployApiLambdaName,
-              //     UserParameters: JSON.stringify({ branchName: branchName, bucketName: sourceCodeBucketName }),
-              //   },
-              // },
             ],
           },
           {
