@@ -26,7 +26,8 @@ phases:
       - echo "Deploy LambdaAPI ..."
       - cd infra
       - npm install
-      - cdk deploy DeploymentStack-/`echo $BRANCH_NAME`/ --context branchName=/`echo $BRANCH_NAME`/
+      - cdk --version
+      - cdk deploy DeploymentStack-"/`echo $BRANCH_NAME`/" --context branchName=/`echo $BRANCH_NAME`/
       - cd ..
 
       # - echo "Building for web..."
