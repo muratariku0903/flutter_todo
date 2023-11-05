@@ -131,6 +131,8 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             ],
           },
           {
+            // Buildステージ内でCDKアプリケーションをデプロイする
+            // 正直FlutterアプリのビルドとAPIのビルドって独立してるから並列でビルド処理したいんだよね
             name: 'Build',
             actions: [
               {
@@ -167,19 +169,19 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                 },
                 inputArtifacts: [{ name: 'BuildOutput' }],
               },
-              {
-                name: 'DeployApiAction',
-                actionTypeId: {
-                  category: 'Invoke',
-                  owner: 'AWS',
-                  provider: 'Lambda',
-                  version: '1',
-                },
-                configuration: {
-                  FunctionName: deployApiLambdaName,
-                  UserParameters: JSON.stringify({ branchName: branchName, bucketName: sourceCodeBucketName }),
-                },
-              },
+              // {
+              //   name: 'DeployApiAction',
+              //   actionTypeId: {
+              //     category: 'Invoke',
+              //     owner: 'AWS',
+              //     provider: 'Lambda',
+              //     version: '1',
+              //   },
+              //   configuration: {
+              //     FunctionName: deployApiLambdaName,
+              //     UserParameters: JSON.stringify({ branchName: branchName, bucketName: sourceCodeBucketName }),
+              //   },
+              // },
             ],
           },
           {

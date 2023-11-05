@@ -12,6 +12,7 @@ const iam = new IAM()
 
 // このLambdaはPipelineのステップの一部として呼び出されます
 // Lambdaは短時間で完了するタスクに適しており長時間の処理だとコストが多くかかってしまう。現状実行完了まで8秒弱かかってしまうのでもう少し処理軽くできないだろうか。
+// API Gateway、Lambda、Role自体は独立したリソースなので、それぞれ別のLambda上で動作させればいい気がするけど。　
 export const handler = async (event: CodePipelineEvent): Promise<void> => {
   const jobId = event['CodePipeline.job'].id
   const { branchName, bucketName } = JSON.parse(
@@ -107,8 +108,6 @@ const createLambdaFunctions = async (
 }
 
 const createRoleForLambda = async (functionName: string, roleArns: string[]): Promise<string> => {
-  console.log(`start ${createRoleForLambda.name}`)
-
   // lambdaに対する信頼ポリシー
   const trustPolicy = {
     Version: '2012-10-17',
@@ -162,8 +161,6 @@ const createRoleForLambda = async (functionName: string, roleArns: string[]): Pr
   } catch (e) {
     console.log(`error at ${createRoleForLambda.name} error: ${e}`)
     throw e
-  } finally {
-    console.log(`end ${createRoleForLambda.name}`)
   }
 }
 
@@ -238,6 +235,7 @@ const createApiGatewaysFromLambdas = async (
     // 作成したAPIをデプロイする
     const deploymentParams: APIGateway.CreateDeploymentRequest = {
       restApiId: apiId,
+      stageName: 'dev',
     }
     await apigateway.createDeployment(deploymentParams).promise()
     console.log(`success deploy api ${apiName}`)
@@ -246,7 +244,7 @@ const createApiGatewaysFromLambdas = async (
   try {
     const existApis = await apigateway.getRestApis().promise()
     await Promise.all(lambdaConfigs.map((config) => create(config, existApis.items)))
-    console.log('success api from lambda')
+    console.log('success create apis from lambdas')
   } catch (error) {
     console.log(`error at ${createApiGatewaysFromLambdas.name} : ${error}`)
     throw error
@@ -256,8 +254,6 @@ const createApiGatewaysFromLambdas = async (
 }
 
 const checkExistRole = async (roleName: string): Promise<IAM.Role | null> => {
-  console.log(`start ${checkExistRole.name}`)
-
   try {
     return (await iam.getRole({ RoleName: roleName }).promise()).Role
   } catch (error: any) {
@@ -266,14 +262,10 @@ const checkExistRole = async (roleName: string): Promise<IAM.Role | null> => {
       return null
     }
     throw error
-  } finally {
-    console.log(`end ${checkExistRole.name}`)
   }
 }
 
 const checkExistLambda = async (functionName: string): Promise<string | null> => {
-  console.log(`start ${checkExistLambda.name}`)
-
   try {
     await lambda.getFunction({ FunctionName: functionName }).promise()
 
@@ -284,8 +276,6 @@ const checkExistLambda = async (functionName: string): Promise<string | null> =>
       return null
     }
     throw error
-  } finally {
-    console.log(`end ${checkExistLambda.name}`)
   }
 }
 

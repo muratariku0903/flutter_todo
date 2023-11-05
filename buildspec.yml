@@ -13,14 +13,6 @@ phases:
 
   pre_build:
     commands:
-      - echo "Packaging Lambda(API) function..."
-      - cd api
-      - npm install
-      - ./node_modules/.bin/tsc --outDir ./
-      - zip -r api.zip . -x "src/*"
-      - aws s3 cp api.zip s3://$BUCKET_NAME/$BRANCH_NAME/api/api.zip
-      - cd ..
-
       # - echo "Fetching dependencies..."
       # - flutter clean
       # - flutter pub get
@@ -31,9 +23,13 @@ phases:
 
   build:
     commands:
+      - echo "Deploy LambdaAPI ..."
+      - cd infra
+      - npm install
+      - cdk deploy DeploymentStack-${BRANCH_NAME} --context branchName=$BRANCH_NAME
+
       # - echo "Building for web..."
       # - flutter build web --base-href /`echo $BRANCH_NAME`/
-
 # artifacts:
 #   files:
 #     - '**/*'
