@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     runtime-version:
-      nodejs: 18
+      nodejs: '18'
     commands:
       # - echo "Installing Flutter..."
       # - git clone https://github.com/flutter/flutter.git -b stable
@@ -31,7 +31,8 @@ phases:
       - npm install
       # cdkのパスを通さないとダメじゃない？
       - cdk --version
-      - cdk deploy DeploymentStack-${BRANCH_NAME} --context branchName=${BRANCH_NAME}
+      - cdk list
+      - cdk deploy DeploymentsStack-${BRANCH_NAME} --context branchName=${BRANCH_NAME}
       - cd ..
 
       # - echo "Building for web..."
