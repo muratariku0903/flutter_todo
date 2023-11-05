@@ -29,7 +29,6 @@ phases:
       - echo "Deploy LambdaAPI ..."
       - cd infra
       - npm install
-      # cdkのパスを通さないとダメじゃない？
       - cdk --version
       - cdk list
       - cdk deploy DeploymentsStack-${BRANCH_NAME} --require-approval never --context branchName=${BRANCH_NAME}
