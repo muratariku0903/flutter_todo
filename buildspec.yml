@@ -20,12 +20,14 @@ phases:
 
       # - echo "Installing npm packages..."
       # - npm install
+      - npm install -g aws-cdk
 
   build:
     commands:
       - echo "Deploy LambdaAPI ..."
       - cd infra
       - npm install
+      # cdkのパスを通さないとダメじゃない？
       - cdk --version
       - cdk deploy DeploymentStack-"/`echo $BRANCH_NAME`/" --context branchName=/`echo $BRANCH_NAME`/
       - cd ..
