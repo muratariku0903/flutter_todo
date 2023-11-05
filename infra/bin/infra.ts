@@ -8,6 +8,7 @@ import { deploymentsConfig } from '../lib/deployments-config'
 
 const app = new cdk.App()
 
+// CodeBuildの環境変数でブランチを指定してある
 const branchName = process.env.BRANCH_NAME || 'master'
 
 new CommonServiceStack(app, 'CommonServiceStack')
