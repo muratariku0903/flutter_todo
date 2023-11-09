@@ -165,6 +165,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                 configuration: {
                   ProjectName: apiCodeBuildName,
                 },
+                inputArtifacts: [{ name: 'SourceOutput' }],
               },
             ],
           },
