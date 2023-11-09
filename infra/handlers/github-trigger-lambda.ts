@@ -71,29 +71,42 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
     }
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
-    const [roleArn, artifactBucketName, connectionArn, sourceCodeBucketName, invalidateCacheLambdaName] =
-      await Promise.all([
-        getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
-        getValueFromStackOutputByKey(
-          AWS_GITHUB_TRIGGER_STACK_NAME,
-          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY
-        ),
-        getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY),
-        getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
-        getValueFromStackOutputByKey(
-          AWS_GITHUB_TRIGGER_STACK_NAME,
-          AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
-        ),
-      ])
+    const [
+      pipelineRoleArn,
+      artifactBucketName,
+      connectionArn,
+      sourceCodeBucketName,
+      invalidateCacheLambdaName,
+      codeBuildRoleArn,
+    ] = await Promise.all([
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
+      getValueFromStackOutputByKey(
+        AWS_GITHUB_TRIGGER_STACK_NAME,
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY
+      ),
+      getValueFromParameterStore(GITHUB_CONNECTION_ARN_SSM_KEY),
+      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
+      getValueFromStackOutputByKey(
+        AWS_GITHUB_TRIGGER_STACK_NAME,
+        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
+      ),
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY),
+    ])
 
     // codebuildプロジェクトを作成
-    const codebuildProjectName = await createCodeBuildProject(branchName)
+    const buildspecNames = ['app_buildspec.yaml', 'api_buildspec.yaml']
+    const [appCodeBuildName, apiCodeBuildName] = await Promise.all(
+      buildspecNames.map((buildspecName) =>
+        createCodeBuildProject(branchName, buildspecName, codeBuildRoleArn, sourceCodeBucketName)
+      )
+    )
+    // const codebuildProjectName = await createCodeBuildProject(branchName)
 
     const pipelineName = `pipeline-${branchName}`
     const params: CreatePipelineCommandInput = {
       pipeline: {
         name: pipelineName,
-        roleArn: roleArn,
+        roleArn: pipelineRoleArn,
         artifactStore: {
           location: artifactBucketName,
           type: 'S3',
@@ -128,7 +141,7 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             name: 'Build',
             actions: [
               {
-                name: 'BuildAction',
+                name: 'AppBuildAction',
                 actionTypeId: {
                   category: 'Build',
                   owner: 'AWS',
@@ -136,10 +149,22 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   provider: 'CodeBuild',
                 },
                 configuration: {
-                  ProjectName: codebuildProjectName,
+                  ProjectName: appCodeBuildName,
                 },
                 inputArtifacts: [{ name: 'SourceOutput' }],
                 outputArtifacts: [{ name: 'BuildOutput' }],
+              },
+              {
+                name: 'ApiBuildAction',
+                actionTypeId: {
+                  category: 'Build',
+                  owner: 'AWS',
+                  version: '1',
+                  provider: 'CodeBuild',
+                },
+                configuration: {
+                  ProjectName: apiCodeBuildName,
+                },
               },
             ],
           },
@@ -195,10 +220,16 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
   }
 }
 
-const createCodeBuildProject = async (branchName: string, overwriting = true): Promise<string> => {
+const createCodeBuildProject = async (
+  branchName: string,
+  buildspecName: string,
+  roleArn: string,
+  sourceCodeBucketName: string,
+  overwriting = true
+): Promise<string> => {
   console.log(`start ${createCodeBuildProject.name}:${branchName}`)
 
-  const projectName = `CodeBuild-${branchName}`
+  const projectName = `CodeBuild-${branchName}-${buildspecName.split('.')[0]}`
 
   try {
     const existCodeBuildProject = await codebuild.batchGetProjects({ names: [projectName] }).promise()
@@ -211,18 +242,12 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
       }
     }
 
-    // codebuildプロジェクトを構築するための必要なロールを取得
-    const [roleArn, sourceCodeBucketName] = await Promise.all([
-      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY),
-      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
-    ])
-
     const params: CreateProjectInput = {
       name: projectName,
       description: `Build project for branch : ${branchName}`,
       source: {
         type: 'CODEPIPELINE', // コードパイプラインのステージ間でソースコードを受け取る前提
-        buildspec: 'api_buildspec.yaml',
+        buildspec: buildspecName, // yamlファイル名を指定
       },
       artifacts: {
         type: 'CODEPIPELINE', // コードパイプラインのステージ間でアーティファクトを受け取る前提
@@ -239,9 +264,6 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
         ],
       },
       serviceRole: roleArn,
-      buildBatchConfig: {
-        serviceRole: roleArn,
-      },
     }
 
     await codebuild.createProject(params).promise()
