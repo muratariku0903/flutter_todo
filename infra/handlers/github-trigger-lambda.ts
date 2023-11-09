@@ -222,6 +222,7 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
       description: `Build project for branch : ${branchName}`,
       source: {
         type: 'CODEPIPELINE', // コードパイプラインのステージ間でソースコードを受け取る前提
+        buildspec: 'api_buildspec.yaml',
       },
       artifacts: {
         type: 'CODEPIPELINE', // コードパイプラインのステージ間でアーティファクトを受け取る前提
