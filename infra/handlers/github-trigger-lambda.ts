@@ -238,9 +238,6 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
         ],
       },
       serviceRole: roleArn,
-      buildBatchConfig: {
-        serviceRole: '',
-      },
     }
 
     await codebuild.createProject(params).promise()
