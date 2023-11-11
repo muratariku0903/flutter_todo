@@ -1,0 +1,29 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: '18'
+    commands:
+      - echo "Installing Flutter..."
+      - git clone https://github.com/flutter/flutter.git -b stable
+      - export PATH="$PATH:`pwd`/flutter/bin"
+      - flutter precache
+      - flutter doctor
+      - node -v
+      - npm -v
+
+  pre_build:
+    commands:
+      - echo "Fetching dependencies..."
+      - flutter clean
+      - flutter pub get
+      - flutter pub run build_runner build
+  build:
+    commands:
+      - echo "Building for web..."
+      - flutter build web --base-href /`echo $BRANCH_NAME`/
+artifacts:
+  files:
+    - '**/*'
+  base-directory: 'build/web'
