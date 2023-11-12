@@ -19,7 +19,6 @@ import {
   SECRET_GITHUB_TOKEN_KEY,
   GITHUB_CONNECTION_ARN_SSM_KEY,
   AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
-  AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY,
 } from './const'
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
@@ -28,29 +27,33 @@ export class GithubTriggerStack extends cdk.Stack {
     super(scope, id, props)
 
     // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
-    const githubTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'githubTriggerLambda', {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '../handlers/github-trigger-lambda.ts'),
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 256,
-      // lambdaで使用する環境変数をセット
-      environment: {
-        AWS_GITHUB_TRIGGER_STACK_NAME,
-        AWS_COMMON_SERVICE_STACK_NAME,
-        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
-        AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
-        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
-        AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
-        AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
-        OWNER_NAME,
-        REPOSITORY_NAME,
-        SECRET_GITHUB_TOKEN_NAME,
-        SECRET_GITHUB_TOKEN_KEY,
-        GITHUB_CONNECTION_ARN_SSM_KEY,
-      },
-    })
-    githubTriggerLambda.addToRolePolicy(
+    const githubBranchPushTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
+      this,
+      'githubBranchPushTriggerLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_18_X,
+        handler: 'handler',
+        entry: path.join(__dirname, '../handlers/github-branch-push-trigger-lambda.ts'),
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 256,
+        // lambdaで使用する環境変数をセット
+        environment: {
+          AWS_GITHUB_TRIGGER_STACK_NAME,
+          AWS_COMMON_SERVICE_STACK_NAME,
+          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
+          AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
+          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+          AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
+          AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
+          OWNER_NAME,
+          REPOSITORY_NAME,
+          SECRET_GITHUB_TOKEN_NAME,
+          SECRET_GITHUB_TOKEN_KEY,
+          GITHUB_CONNECTION_ARN_SSM_KEY,
+        },
+      }
+    )
+    githubBranchPushTriggerLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
@@ -72,15 +75,73 @@ export class GithubTriggerStack extends cdk.Stack {
     )
 
     // 上記のLambdaをAPIとして公開する
-    const githubTriggerApi = new apigateway.LambdaRestApi(this, 'githubTriggerApi', {
-      handler: githubTriggerLambda,
-      restApiName: 'githubTriggerApi',
+    const githubBranchPushTriggerApi = new apigateway.LambdaRestApi(this, 'githubBranchPushTriggerApi', {
+      handler: githubBranchPushTriggerLambda,
+      restApiName: 'githubBranchPushTriggerApi',
       deploy: true,
       proxy: false,
     })
-    const webhook = githubTriggerApi.root.addResource('webhook')
+    const pushTriggerWebhook = githubBranchPushTriggerApi.root.addResource('webhook')
     // githubからのポストリクエストを受け入れる
-    webhook.addMethod('POST')
+    pushTriggerWebhook.addMethod('POST')
+
+    // Githubのブランチの削除をトリガーとするLambda
+    const githubBranchDeleteTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
+      this,
+      'githubBranchDeleteTriggerLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_18_X,
+        handler: 'handler',
+        entry: path.join(__dirname, '../handlers/github-branch-delete-trigger-lambda.ts'),
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 256,
+        // lambdaで使用する環境変数をセット
+        environment: {
+          AWS_GITHUB_TRIGGER_STACK_NAME,
+          AWS_COMMON_SERVICE_STACK_NAME,
+          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
+          AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
+          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
+          AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
+          AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
+          OWNER_NAME,
+          REPOSITORY_NAME,
+          SECRET_GITHUB_TOKEN_NAME,
+          SECRET_GITHUB_TOKEN_KEY,
+          GITHUB_CONNECTION_ARN_SSM_KEY,
+        },
+      }
+    )
+    githubBranchDeleteTriggerLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'codepipeline:ListPipelines',
+          'cloudformation:DescribeStacks',
+          'cloudformation:ListStacks',
+          'codepipeline:CreatePipeline',
+          'codepipeline:DeletePipeline',
+          'iam:PassRole', // Lambdaがさまざまなサービス権限をPipelineに委譲するための権限
+          'ssm:GetParameter',
+          'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
+          'codebuild:CreateProject',
+          'codebuild:DeleteProject',
+          'codebuild:BatchGetProjects',
+          'secretsmanager:GetSecretValue',
+        ],
+        resources: ['*'],
+      })
+    )
+    // 上記のLambdaをAPIとして公開する
+    const githubBranchDeleteTriggerApi = new apigateway.LambdaRestApi(this, 'githubBranchDeleteTriggerApi', {
+      handler: githubBranchDeleteTriggerLambda,
+      restApiName: 'githubBranchDeleteTriggerApi',
+      deploy: true,
+      proxy: false,
+    })
+    const deleteTriggerWebhook = githubBranchDeleteTriggerApi.root.addResource('webhook')
+    // githubからのポストリクエストを受け入れる
+    deleteTriggerWebhook.addMethod('POST')
 
     // codebuild用のRoleを作成してエクスポートしておく
     const codebuildRole = new iam.Role(this, 'githubTriggerCodeBuildRole', {
@@ -151,55 +212,6 @@ export class GithubTriggerStack extends cdk.Stack {
       value: artifactBucket.bucketName,
       description: 'bucket to store artifact sharing pipeline',
       exportName: AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY, // .envの値を参照したい
-    })
-
-    // APIを作成するためのLambda
-    const deployApiLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'deployApiLambda', {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '../handlers/deploy-api-lambda.ts'),
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 256,
-    })
-    deployApiLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          's3:ListBucket',
-          's3:GetBucketLocation',
-          's3:PutObject',
-          's3:GetObject',
-          'lambda:CreateFunction',
-          'lambda:GetFunction',
-          'lambda:DeleteFunction',
-          'iam:PassRole',
-          'iam:CreateRole',
-          'iam:AttachRolePolicy',
-          'iam:DetachRolePolicy',
-          'iam:ListAttachedRolePolicies',
-          'iam:GetRole',
-          'apigateway:CreateRestApi',
-          'apigateway:CreateResource',
-          'apigateway:PutMethod',
-          'apigateway:GET',
-          'apigateway:POST',
-          'apigateway:PUT',
-          'apigateway:DELETE',
-          'apigateway:PutIntegration',
-          // Pipelineで実行されるLambdaが実行結果をPipelineに通知するため
-          'codepipeline:PutJobSuccessResult',
-          'codepipeline:PutJobFailureResult',
-        ],
-        resources: ['*'],
-      })
-    )
-    deployApiLambda.addPermission('InvokedByCodePipelineForDeployApiLambda', {
-      action: 'lambda:InvokeFunction',
-      principal: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
-    })
-    new cdk.CfnOutput(this, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY, {
-      value: deployApiLambda.functionName,
-      exportName: AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY,
     })
 
     // CloudFrontにキャッシュされているコンテンツを破棄するためのLambda

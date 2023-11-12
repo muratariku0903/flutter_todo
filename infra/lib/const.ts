@@ -7,7 +7,6 @@ export const AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY =
 export const AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = 'exportSourceCodeBucketName'
 export const AWS_EXPORT_CLOUDFRONT_DISTRIBUTION_ID_KEY = 'exportCloudFrontDistributionId'
 export const AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY = 'exportInvalidateCloudFrontCacheLambdaName'
-export const AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY = 'exportDeployApiLambdaName'
 export const OWNER_NAME = 'muratariku0903'
 export const REPOSITORY_NAME = 'flutter_todo'
 export const SECRET_GITHUB_TOKEN_NAME = 'github-pipeline-token'
