@@ -5,10 +5,16 @@ import {
   CreatePipelineCommand,
   ListPipelinesCommand,
   CreatePipelineCommandInput,
+  DeletePipelineCommand,
 } from '@aws-sdk/client-codepipeline'
 import { CreateProjectInput } from 'aws-sdk/clients/codebuild'
+import { CodeBuildClient, DeleteProjectCommand } from '@aws-sdk/client-codebuild'
+import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
+import { S3ControlClient, CreateJobCommand, CreateJobCommandInput } from '@aws-sdk/client-s3-control'
+// import { S3Client, DeleteBucketCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 const {
   AWS_REGION,
+  AWS_ACCOUNT_ID = '',
   AWS_COMMON_SERVICE_STACK_NAME = '',
   AWS_GITHUB_TRIGGER_STACK_NAME = '',
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY = '',
@@ -20,9 +26,12 @@ const {
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
-import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
 
+// 削除するリソースはなんだろう？
+// Pipeline、CodeBuild,S3、　APIとか ソースコードを格納するバケットとアーティファクトを格納するバケットを削除する必要がある
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
+const codeBuildClient = new CodeBuildClient({ region: AWS_REGION })
+const s3Client = new S3ControlClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
 const codepipeline = new CodePipeline()
 
@@ -31,10 +40,53 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     let body = JSON.parse(event.body ?? '{}')
 
     let branchName: string = body.ref.split('/').pop()
-    console.log('Branch Name:', branchName)
 
-    // Pipelineリソースを作成
-    // await createPipeline(branchName)
+    // Pipelineリソースを削除（Pipelineが存在するかどうかをチェックした方がいい）
+    const pipelineName = `pipeline-${branchName}`
+    const listPipelinesOutput = await codePipelineClient.send(new ListPipelinesCommand({}))
+    const existPipeline = listPipelinesOutput.pipelines?.find((pipeline) => pipeline.name === `pipeline-${branchName}`)
+    if (existPipeline) {
+      const deletePipelineCmd = new DeletePipelineCommand({ name: pipelineName })
+      await codePipelineClient.send(deletePipelineCmd)
+      console.log(`Delete Pipeline: pipeline-${branchName}`)
+    }
+
+    // CodeBuildリソースの削除（CodeBuildProjectが存在するかどうかをチェックした方がいい）
+    const buildspecNames = ['app_buildspec.yaml', 'api_buildspec.yaml']
+    await Promise.all(
+      buildspecNames.map(async (buildspecName) => {
+        const buildProjectName = `CodeBuild-${branchName}-${buildspecName.split('.')[0]}`
+        const existCodeBuildProject = await codebuild.batchGetProjects({ names: [buildProjectName] }).promise()
+        if (existCodeBuildProject.projects && existCodeBuildProject.projects?.length > 0) {
+          const deleteCodBuildCmd = new DeleteProjectCommand({ name: buildProjectName })
+          await codeBuildClient.send(deleteCodBuildCmd)
+          console.log(`Delete CodeBuildProject: ${buildProjectName}`)
+        }
+      })
+    )
+
+    // ソースコードとArtifactを格納するS3バケットリソース削除
+    const [artifactBucketName, sourceCodeBucketName] = await Promise.all([
+      getValueFromStackOutputByKey(
+        AWS_GITHUB_TRIGGER_STACK_NAME,
+        AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY
+      ),
+      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
+    ])
+
+    const jobParams: CreateJobCommandInput = {
+      AccountId: AWS_ACCOUNT_ID,
+      ConfirmationRequired: false, // 手動での確認を無効
+      Operation: { S3DeleteObjectTagging: {} },
+      Report: {
+        Bucket: sourceCodeBucketName,
+        Format:
+      }
+      
+    }
+
+    const s3JobCmd = new CreateJobCommand(jobParams)
+    await s3Client.send(s3JobCmd)
 
     return {
       statusCode: 200,
