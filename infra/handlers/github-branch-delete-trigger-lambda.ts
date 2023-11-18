@@ -4,6 +4,7 @@ import { CodePipelineClient, ListPipelinesCommand, DeletePipelineCommand } from 
 import { CodeBuildClient, DeleteProjectCommand } from '@aws-sdk/client-codebuild'
 import { getValueFromStackOutputByKey } from './common'
 import { S3Client, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { CloudFormationClient, DeleteStackCommand, DescribeStacksCommand } from '@aws-sdk/client-cloudformation'
 const { AWS_REGION, AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '' } = process.env
 
 // 削除するリソースはなんだろう？
@@ -12,6 +13,7 @@ const { AWS_REGION, AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_SOURCE_CODE_B
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codeBuildClient = new CodeBuildClient({ region: AWS_REGION })
 const s3Client = new S3Client({ region: AWS_REGION })
+const cloudformationClient = new CloudFormationClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -46,13 +48,22 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
     // ソースコードとArtifactを格納するS3バケットリソース削除
     // ただ、Artifactに関してはdevelopの階層にどんどん追加されているので削除してもしなくてもどちらもでいい気がする。
-    // てか、Artifactって直接アプリを表示するのに使われないし、ぶっちゃけ、バケットのない全てを削除してもいいのでは
+    // てか、Artifactって直接アプリを表示するのに使われないし、ぶっちゃけ、バケットの内の全てを削除してもいいのでは？
     const [sourceCodeBucketName] = await Promise.all([
       getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
     ])
     await deleteS3Directory(sourceCodeBucketName, branchName)
+    console.log(`Delete S3 Directory ${branchName}`)
 
-    // Stackを削除する必要がある
+    // Stack(API Gateway Lambda)を削除
+    const stackName = `DeploymentsStack-${branchName}`
+    const describeCmd = new DescribeStacksCommand({ StackName: stackName })
+    const describeCmdRes = await cloudformationClient.send(describeCmd)
+    if (describeCmdRes.Stacks && describeCmdRes.Stacks.length > 0) {
+      const stackDeleteCmd = new DeleteStackCommand({ StackName: `DeploymentsStack-${branchName}` })
+      await cloudformationClient.send(stackDeleteCmd)
+      console.log(`Delete Stack: ${stackName}`)
+    }
 
     return {
       statusCode: 200,

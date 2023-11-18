@@ -6,7 +6,6 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import path = require('path')
 import {
-  AWS_ACCOUNT_ID,
   AWS_GITHUB_TRIGGER_STACK_NAME,
   AWS_COMMON_SERVICE_STACK_NAME,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
@@ -98,19 +97,8 @@ export class GithubTriggerStack extends cdk.Stack {
         memorySize: 256,
         // lambdaで使用する環境変数をセット
         environment: {
-          AWS_ACCOUNT_ID,
-          AWS_GITHUB_TRIGGER_STACK_NAME,
           AWS_COMMON_SERVICE_STACK_NAME,
-          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
-          AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY,
-          AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ARTIFACT_BUCKET_NAME_KEY,
-          AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
           AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY,
-          OWNER_NAME,
-          REPOSITORY_NAME,
-          SECRET_GITHUB_TOKEN_NAME,
-          SECRET_GITHUB_TOKEN_KEY,
-          GITHUB_CONNECTION_ARN_SSM_KEY,
         },
       }
     )
@@ -120,6 +108,7 @@ export class GithubTriggerStack extends cdk.Stack {
         actions: [
           'cloudformation:DescribeStacks',
           'cloudformation:ListStacks',
+          'cloudformation:DeleteStack',
           'codepipeline:ListPipelines',
           'codepipeline:DeletePipeline',
           'iam:PassRole', // Lambdaがさまざまなサービス権限をPipelineに委譲するための権限
