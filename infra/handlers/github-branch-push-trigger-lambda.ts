@@ -21,7 +21,6 @@ const {
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
 import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
-import { AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY } from '../lib/const'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -73,12 +72,12 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
 
     // pipelineリソースを構築するための必要なロールやS3バケットキーを取得
     const [
-      roleArn,
+      pipelineRoleArn,
       artifactBucketName,
       connectionArn,
       sourceCodeBucketName,
       invalidateCacheLambdaName,
-      deployApiLambdaName,
+      codeBuildRoleArn,
     ] = await Promise.all([
       getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY),
       getValueFromStackOutputByKey(
@@ -91,17 +90,23 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
         AWS_GITHUB_TRIGGER_STACK_NAME,
         AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY
       ),
-      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_DEPLOY_API_LAMBDA_NAME_KEY),
+      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY),
     ])
 
     // codebuildプロジェクトを作成
-    const codebuildProjectName = await createCodeBuildProject(branchName)
+    const buildspecNames = ['app_buildspec.yaml', 'api_buildspec.yaml']
+    const [appCodeBuildName, apiCodeBuildName] = await Promise.all(
+      buildspecNames.map((buildspecName) =>
+        createCodeBuildProject(branchName, buildspecName, codeBuildRoleArn, sourceCodeBucketName)
+      )
+    )
+    // const codebuildProjectName = await createCodeBuildProject(branchName)
 
     const pipelineName = `pipeline-${branchName}`
     const params: CreatePipelineCommandInput = {
       pipeline: {
         name: pipelineName,
-        roleArn: roleArn,
+        roleArn: pipelineRoleArn,
         artifactStore: {
           location: artifactBucketName,
           type: 'S3',
@@ -131,10 +136,12 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
             ],
           },
           {
+            // Buildステージ内でCDKアプリケーションをデプロイする
+            // 正直FlutterアプリのビルドとAPIのビルドって独立してるから並列でビルド処理したいんだよね
             name: 'Build',
             actions: [
               {
-                name: 'BuildAction',
+                name: 'AppBuildAction',
                 actionTypeId: {
                   category: 'Build',
                   owner: 'AWS',
@@ -142,10 +149,23 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   provider: 'CodeBuild',
                 },
                 configuration: {
-                  ProjectName: codebuildProjectName,
+                  ProjectName: appCodeBuildName,
                 },
                 inputArtifacts: [{ name: 'SourceOutput' }],
                 outputArtifacts: [{ name: 'BuildOutput' }],
+              },
+              {
+                name: 'ApiBuildAction',
+                actionTypeId: {
+                  category: 'Build',
+                  owner: 'AWS',
+                  version: '1',
+                  provider: 'CodeBuild',
+                },
+                configuration: {
+                  ProjectName: apiCodeBuildName,
+                },
+                inputArtifacts: [{ name: 'SourceOutput' }],
               },
             ],
           },
@@ -166,19 +186,6 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
                   Extract: 'true', // 元ファイルであるアーティファクトがzipになっていた場合は自動で展開してくれる
                 },
                 inputArtifacts: [{ name: 'BuildOutput' }],
-              },
-              {
-                name: 'DeployApiAction',
-                actionTypeId: {
-                  category: 'Invoke',
-                  owner: 'AWS',
-                  provider: 'Lambda',
-                  version: '1',
-                },
-                configuration: {
-                  FunctionName: deployApiLambdaName,
-                  UserParameters: JSON.stringify({ branchName: branchName, bucketName: sourceCodeBucketName }),
-                },
               },
             ],
           },
@@ -214,10 +221,16 @@ const createPipeline = async (branchName: string, overwriting: boolean = true): 
   }
 }
 
-const createCodeBuildProject = async (branchName: string, overwriting = true): Promise<string> => {
+const createCodeBuildProject = async (
+  branchName: string,
+  buildspecName: string,
+  roleArn: string,
+  sourceCodeBucketName: string,
+  overwriting = true
+): Promise<string> => {
   console.log(`start ${createCodeBuildProject.name}:${branchName}`)
 
-  const projectName = `CodeBuild-${branchName}`
+  const projectName = `CodeBuild-${branchName}-${buildspecName.split('.')[0]}`
 
   try {
     const existCodeBuildProject = await codebuild.batchGetProjects({ names: [projectName] }).promise()
@@ -230,17 +243,12 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
       }
     }
 
-    // codebuildプロジェクトを構築するための必要なロールを取得
-    const [roleArn, sourceCodeBucketName] = await Promise.all([
-      getValueFromStackOutputByKey(AWS_GITHUB_TRIGGER_STACK_NAME, AWS_EXPORT_GITHUB_TRIGGER_CODEBUILD_ROLE_ARN_KEY),
-      getValueFromStackOutputByKey(AWS_COMMON_SERVICE_STACK_NAME, AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY),
-    ])
-
     const params: CreateProjectInput = {
       name: projectName,
       description: `Build project for branch : ${branchName}`,
       source: {
         type: 'CODEPIPELINE', // コードパイプラインのステージ間でソースコードを受け取る前提
+        buildspec: buildspecName, // yamlファイル名を指定
       },
       artifacts: {
         type: 'CODEPIPELINE', // コードパイプラインのステージ間でアーティファクトを受け取る前提
@@ -248,7 +256,8 @@ const createCodeBuildProject = async (branchName: string, overwriting = true): P
       environment: {
         type: 'LINUX_CONTAINER',
         computeType: 'BUILD_GENERAL1_SMALL',
-        image: 'aws/codebuild/standard:5.0',
+        // Nodejs１８系を使うため
+        image: 'aws/codebuild/standard:7.0',
         // build時に参照する環境変数をセット
         environmentVariables: [
           { name: 'BRANCH_NAME', value: branchName, type: 'PLAINTEXT' },

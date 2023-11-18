@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: '18'
+    commands:
+      - node -v
+      - npm -v
+
+  pre_build:
+    commands:
+      - echo "Fetching dependencies..."
+      - npm install -g aws-cdk
+
+  build:
+    commands:
+      - echo "Deploy LambdaAPI using AWS CDK ..."
+      - cd infra
+      - npm install
+      - cdk --version
+      # - cdk list
+      - cdk deploy DeploymentsStack-${BRANCH_NAME} --require-approval never --context branchName=${BRANCH_NAME}
