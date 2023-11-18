@@ -35,6 +35,14 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     let branchName: string = body.ref.split('/').pop()
     console.log('Branch Name:', branchName)
 
+    // API(Lambda)はブランチが削除された時もトリガーされてしまうのでその時は特にリソースは生成しない
+    if (body.deleted) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify(`Branch deletion event ignored for ${branchName}`),
+      }
+    }
+
     // Pipelineリソースを作成
     await createPipeline(branchName)
 
