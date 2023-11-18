@@ -118,16 +118,15 @@ export class GithubTriggerStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
-          'codepipeline:ListPipelines',
           'cloudformation:DescribeStacks',
           'cloudformation:ListStacks',
+          'codepipeline:ListPipelines',
           'codepipeline:DeletePipeline',
           'iam:PassRole', // Lambdaがさまざまなサービス権限をPipelineに委譲するための権限
-          'ssm:GetParameter',
-          'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
           'codebuild:DeleteProject',
           'codebuild:BatchGetProjects',
-          'secretsmanager:GetSecretValue',
+          's3:ListBucket',
+          's3:DeleteObject',
         ],
         resources: ['*'],
       })

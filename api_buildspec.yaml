@@ -19,5 +19,5 @@ phases:
       - cd infra
       - npm install
       - cdk --version
-      - cdk list
+      # - cdk list
       - cdk deploy DeploymentsStack-${BRANCH_NAME} --require-approval never --context branchName=${BRANCH_NAME}
