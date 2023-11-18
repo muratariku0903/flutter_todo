@@ -6,6 +6,7 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import path = require('path')
 import {
+  AWS_ACCOUNT_ID,
   AWS_GITHUB_TRIGGER_STACK_NAME,
   AWS_COMMON_SERVICE_STACK_NAME,
   AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
@@ -97,6 +98,7 @@ export class GithubTriggerStack extends cdk.Stack {
         memorySize: 256,
         // lambdaで使用する環境変数をセット
         environment: {
+          AWS_ACCOUNT_ID,
           AWS_GITHUB_TRIGGER_STACK_NAME,
           AWS_COMMON_SERVICE_STACK_NAME,
           AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY,
@@ -119,12 +121,10 @@ export class GithubTriggerStack extends cdk.Stack {
           'codepipeline:ListPipelines',
           'cloudformation:DescribeStacks',
           'cloudformation:ListStacks',
-          'codepipeline:CreatePipeline',
           'codepipeline:DeletePipeline',
           'iam:PassRole', // Lambdaがさまざまなサービス権限をPipelineに委譲するための権限
           'ssm:GetParameter',
           'codestar-connections:PassConnection', // LambdaがGithubと接続を確立するための権限
-          'codebuild:CreateProject',
           'codebuild:DeleteProject',
           'codebuild:BatchGetProjects',
           'secretsmanager:GetSecretValue',
