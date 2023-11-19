@@ -20,7 +20,7 @@ const {
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
-import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
+import { getValueFromParameterStore, getValueFromStackOutputByKey, notifyAllMembers, sendEmail } from './common'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -46,12 +46,18 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     // Pipelineリソースを作成
     await createPipeline(branchName)
 
+    // 処理が全て成功したらメールで通知
+    // 開発メンバー全員に通知して欲しいから、メンバーのメールをどこかで一元管理したい。
+    await notifyAllMembers('hello', 'world')
+
     return {
       statusCode: 200,
       body: JSON.stringify(`Create AWS Resource for ${branchName}`),
     }
   } catch (e) {
     console.error(e)
+
+    await notifyAllMembers('hello', 'world')
 
     return {
       statusCode: 500,

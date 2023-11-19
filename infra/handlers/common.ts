@@ -1,8 +1,9 @@
-import { CloudFormation, SSM, SecretsManager } from 'aws-sdk'
+import { CloudFormation, SSM, SecretsManager, SES } from 'aws-sdk'
 
 const cloudformation = new CloudFormation()
 const ssm = new SSM()
 const secretsManager = new SecretsManager()
+const ses = new SES()
 
 export const getValueFromParameterStore = async (key: string): Promise<string> => {
   console.log(`start ${getValueFromParameterStore.name} key: ${key}`)
@@ -83,3 +84,55 @@ export const getValueFromSecretManager = async (secretName: string, keyName: str
     console.log(`end ${getValueFromSecretManager.name}`)
   }
 }
+
+export const sendEmail = async (emails: string[], subject: string, body: string, source?: string): Promise<void> => {
+  console.log(`start ${sendEmail.name} email: ${emails}`)
+
+  try {
+    if (!source) {
+      source = await getValueFromParameterStore('source_email')
+    }
+
+    // メールの設定
+    const emailParams = {
+      Source: source, // 承認されたメールアドレス
+      Destination: {
+        ToAddresses: emails,
+      },
+      Message: {
+        Subject: { Data: subject },
+        Body: {
+          Text: { Data: body },
+        },
+      },
+    }
+
+    await ses.sendEmail(emailParams).promise()
+    console.log(`Success send email to ${emails.join(' ')}`)
+  } catch (e) {
+    // メール送信に失敗しても例外はスローしない
+    console.log(`Fail send email to ${emails.join(' ')} error: ${JSON.stringify(e)}`)
+  } finally {
+    console.log(`end ${sendEmail.name}`)
+  }
+}
+
+export const notifyAllMembers = async (subject: string, body: string): Promise<void> => {
+  console.log(`start ${notifyAllMembers.name}`)
+
+  try {
+    // 開発メンバーのメールアドレスを取得
+    const param = await getValueFromParameterStore('')
+    const emails = param.split(',')
+
+    await sendEmail(emails, subject, body)
+    console.log(`Success send email to ${emails.join(',')}`)
+  } catch (e) {
+    // メール送信に失敗しても例外はスローしない
+    console.log(`Fail send email error: ${JSON.stringify(e)}`)
+  } finally {
+    console.log(`end ${notifyAllMembers.name}`)
+  }
+}
+
+type NotifyType = 'SUCCESS' | 'FAIL'
