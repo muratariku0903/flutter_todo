@@ -113,6 +113,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'codepipeline:ListPipelines',
           'codepipeline:DeletePipeline',
           'iam:PassRole', // Lambdaがさまざまなサービス権限をPipelineに委譲するための権限
+          'ssm:GetParameter',
           'codebuild:DeleteProject',
           'codebuild:BatchGetProjects',
           's3:ListBucket',
