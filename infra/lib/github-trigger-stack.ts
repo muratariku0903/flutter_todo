@@ -69,6 +69,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'codebuild:DeleteProject',
           'codebuild:BatchGetProjects',
           'secretsmanager:GetSecretValue',
+          'ses:SendEmail',
         ],
         resources: ['*'],
       })
@@ -116,6 +117,7 @@ export class GithubTriggerStack extends cdk.Stack {
           'codebuild:BatchGetProjects',
           's3:ListBucket',
           's3:DeleteObject',
+          'ses:SendEmail',
         ],
         resources: ['*'],
       })

@@ -20,7 +20,7 @@ const {
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
-import { getValueFromParameterStore, getValueFromStackOutputByKey } from './common'
+import { getValueFromParameterStore, getValueFromStackOutputByKey, notifyAllMembers, sendEmail } from './common'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
@@ -29,10 +29,12 @@ const codepipeline = new CodePipeline()
 // githubへのプッシュごとに毎回実行されるから毎回ブランチごとにPipelineが生成される
 // 単純に、Pipelineを作らずに、ソースコードを取得して、ビルドしてS3にデプロイすればいいだけじゃないの？
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  let branchName = ''
+
   try {
     let body = JSON.parse(event.body ?? '{}')
 
-    let branchName: string = body.ref.split('/').pop()
+    branchName = body.ref.split('/').pop()
     console.log('Branch Name:', branchName)
 
     // API(Lambda)はブランチが削除された時もトリガーされてしまうのでその時は特にリソースは生成しない
@@ -46,12 +48,18 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     // Pipelineリソースを作成
     await createPipeline(branchName)
 
+    // 処理が全て成功したらメールで通知
+    // 開発メンバー全員に通知して欲しいから、メンバーのメールをパラメーターストアで一元管理
+    await notifyAllMembers('Pipelineの作成に成功しました!', `${branchName}のPipelineを作成しました。`)
+
     return {
       statusCode: 200,
       body: JSON.stringify(`Create AWS Resource for ${branchName}`),
     }
   } catch (e) {
     console.error(e)
+
+    await notifyAllMembers('Pipelineの作成に失敗しました', `${branchName}のPipelineがの作成に失敗しました。`)
 
     return {
       statusCode: 500,

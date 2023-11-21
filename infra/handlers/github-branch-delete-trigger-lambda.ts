@@ -2,7 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } f
 import { CodeBuild } from 'aws-sdk'
 import { CodePipelineClient, ListPipelinesCommand, DeletePipelineCommand } from '@aws-sdk/client-codepipeline'
 import { CodeBuildClient, DeleteProjectCommand } from '@aws-sdk/client-codebuild'
-import { getValueFromStackOutputByKey } from './common'
+import { getValueFromStackOutputByKey, notifyAllMembers } from './common'
 import { S3Client, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { CloudFormationClient, DeleteStackCommand, DescribeStacksCommand } from '@aws-sdk/client-cloudformation'
 const { AWS_REGION, AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '' } = process.env
@@ -17,10 +17,12 @@ const cloudformationClient = new CloudFormationClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  let branchName = ''
+
   try {
     let body = JSON.parse(event.body ?? '{}')
 
-    let branchName: string = body.ref.split('/').pop()
+    branchName = body.ref.split('/').pop()
 
     // Pipelineリソースを削除（Pipelineが存在するかどうかをチェックした方がいい）
     const pipelineName = `pipeline-${branchName}`
@@ -65,12 +67,16 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
       console.log(`Delete Stack: ${stackName}`)
     }
 
+    await notifyAllMembers('リソースの削除に成功しました!', `${branchName}のリソースを削除しました。`)
+
     return {
       statusCode: 200,
       body: JSON.stringify(`Delete AWS Resource for ${branchName}`),
     }
   } catch (e) {
     console.error(e)
+
+    await notifyAllMembers('Pipelineのリソース削除に失敗しました', `${branchName}のリソースを削除に失敗しました`)
 
     return {
       statusCode: 500,
