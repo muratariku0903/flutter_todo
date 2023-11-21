@@ -122,7 +122,7 @@ export const notifyAllMembers = async (subject: string, body: string): Promise<v
 
   try {
     // 開発メンバーのメールアドレスを取得
-    const param = await getValueFromParameterStore('')
+    const param = await getValueFromParameterStore('developer_emails')
     const emails = param.split(',')
 
     await sendEmail(emails, subject, body)
@@ -134,5 +134,3 @@ export const notifyAllMembers = async (subject: string, body: string): Promise<v
     console.log(`end ${notifyAllMembers.name}`)
   }
 }
-
-type NotifyType = 'SUCCESS' | 'FAIL'
