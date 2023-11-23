@@ -7,7 +7,6 @@ import { S3Client, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/c
 import { CloudFormationClient, DeleteStackCommand, DescribeStacksCommand } from '@aws-sdk/client-cloudformation'
 const { AWS_REGION, AWS_COMMON_SERVICE_STACK_NAME = '', AWS_EXPORT_SOURCE_CODE_BUCKET_NAME_KEY = '' } = process.env
 
-// 削除するリソースはなんだろう？
 // Pipeline、CodeBuild,S3、　APIとか ソースコードを格納するバケットとアーティファクトを格納するバケットを削除する必要がある
 // ビルドされたソースコードのオブジェクト自体は６０弱なのでそこまでLambdaで処理しても時間がかからず費用もないので直接Lambdaで削除することにする
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })

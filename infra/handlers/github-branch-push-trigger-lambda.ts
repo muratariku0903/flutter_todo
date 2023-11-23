@@ -20,7 +20,7 @@ const {
   REPOSITORY_NAME = '',
   GITHUB_CONNECTION_ARN_SSM_KEY = '',
 } = process.env
-import { getValueFromParameterStore, getValueFromStackOutputByKey, notifyAllMembers, sendEmail } from './common'
+import { getValueFromParameterStore, getValueFromStackOutputByKey, notifyAllMembers } from './common'
 
 const codePipelineClient = new CodePipelineClient({ region: AWS_REGION })
 const codebuild = new CodeBuild()
