@@ -4,6 +4,11 @@ import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as sns from 'aws-cdk-lib/aws-sns'
+import * as events from 'aws-cdk-lib/aws-events'
+import * as targets from 'aws-cdk-lib/aws-events-targets'
+import * as ssm from 'aws-cdk-lib/aws-ssm'
+import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions'
 import path = require('path')
 import {
   AWS_GITHUB_TRIGGER_STACK_NAME,
@@ -19,12 +24,20 @@ import {
   SECRET_GITHUB_TOKEN_KEY,
   GITHUB_CONNECTION_ARN_SSM_KEY,
   AWS_EXPORT_INVALIDATE_CLOUDFRONT_CACHE_LAMBDA_NAME_KEY,
+  AWS_ACCOUNT_ID,
+  REGION,
 } from './const'
 
 //  GithubへのPushに紐づいて実行されるLambdaを作成する
 export class GithubTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props)
+    super(scope, id, {
+      ...props,
+      env: {
+        account: AWS_ACCOUNT_ID,
+        region: REGION,
+      },
+    })
 
     // GithubへのPUSHでトリガーされるLambda アクセスするので権限を付与しておく。
     const githubBranchPushTriggerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
@@ -193,6 +206,30 @@ export class GithubTriggerStack extends cdk.Stack {
       description: 'role for pipeline triggered by github event.',
       exportName: AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY, // .envの値を参照したい
     })
+
+    // Pipelineの実行結果を通知するためのSNSトピックを作成して、CloudWatchと紐づける
+    // 通知の流れとしては、Pipelineのステータス変更→CloudWatch検知→SNSにてメッセージを送信→email
+    const pipelineStatusNotifyTopic = new sns.Topic(this, 'PipelineStatusNotifyTopic', {
+      displayName: 'PipelineStatusNotifyTopic',
+      topicName: 'PipelineStatusNotifyTopic',
+    })
+    const pipelineStatusNotifyRule = new events.Rule(this, 'PipelineStatusNotifyRule', {
+      eventPattern: {
+        source: ['aws.codepipeline'],
+        detailType: ['CodePipeline Pipeline Execution State Change'],
+        detail: {
+          state: ['SUCCEEDED', 'FAILED'],
+        },
+      },
+    })
+    const pipelineStatusNotifyTarget = new targets.SnsTopic(pipelineStatusNotifyTopic)
+    pipelineStatusNotifyRule.addTarget(pipelineStatusNotifyTarget)
+    // 開発者用のメールアドレス一覧を取得してサブスクライバーとして設定
+    const devEmails = ssm.StringParameter.valueFromLookup(this, '/developer_emails').split(',')
+    for (const email of devEmails) {
+      const subscription = new subscriptions.EmailSubscription(email.trim())
+      pipelineStatusNotifyTopic.addSubscription(subscription)
+    }
 
     // Pipelineのステージ間で共有するArtifactsを保管するS3バケットを生成してBucketネームをエクスポート
     const artifactBucket = new s3.Bucket(this, 'githubTriggerPipelineArtifactBucket', {

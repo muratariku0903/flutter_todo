@@ -1,4 +1,5 @@
 export const AWS_ACCOUNT_ID = '262115391162'
+export const REGION = 'ap-northeast-1'
 export const AWS_GITHUB_TRIGGER_STACK_NAME = 'GithubTriggerStack'
 export const AWS_COMMON_SERVICE_STACK_NAME = 'CommonServiceStack'
 export const AWS_EXPORT_GITHUB_TRIGGER_PIPELINE_ROLE_ARN_KEY = 'exportGithubTriggerPipelineRoleArn'
