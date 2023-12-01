@@ -208,7 +208,7 @@ export class GithubTriggerStack extends cdk.Stack {
     })
 
     // Pipelineの実行結果を通知するためのSNSトピックを作成して、CloudWatchと紐づける
-    // 通知の流れとしては、Pipelineのステータス変更→CloudWatch検知→SNSにてメッセージを送信→email
+    // 通知の流れとしては、Pipelineのステータス変更→EventBridge検知→SNSにてメッセージを送信→email
     const pipelineStatusNotifyTopic = new sns.Topic(this, 'PipelineStatusNotifyTopic', {
       displayName: 'PipelineStatusNotifyTopic',
       topicName: 'PipelineStatusNotifyTopic',
